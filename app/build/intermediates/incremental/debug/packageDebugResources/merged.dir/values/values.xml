@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_bg">#2A2A2A</color>
+    <string name="app_name">DJ Crate Curator</string>
+    <style name="Theme.DJCrateCurator" parent="Theme.Material3.DayNight.NoActionBar"/>
+</resources>

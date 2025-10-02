@@ -1,0 +1,14 @@
+[
+    {
+        "merged": "com.david.dcc.app-debug-69:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "com.david.dcc.app-main-71:/mipmap-anydpi-v26/ic_launcher_round.xml"
+    },
+    {
+        "merged": "com.david.dcc.app-debug-69:/drawable_ic_launcher_foreground.xml.flat",
+        "source": "com.david.dcc.app-main-71:/drawable/ic_launcher_foreground.xml"
+    },
+    {
+        "merged": "com.david.dcc.app-debug-69:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "com.david.dcc.app-main-71:/mipmap-anydpi-v26/ic_launcher.xml"
+    }
+]
