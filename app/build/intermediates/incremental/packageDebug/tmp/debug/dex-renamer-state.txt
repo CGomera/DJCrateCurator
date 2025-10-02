@@ -1,12 +1,12 @@
-#Thu Oct 02 09:29:30 CEST 2025
-base.0=C\:\\Users\\David\\AndroidStudioProjects\\DJCrateCuratorNew\\app\\build\\intermediates\\dex\\debug\\mergeExtDexDebug\\classes.dex
-base.1=C\:\\Users\\David\\AndroidStudioProjects\\DJCrateCuratorNew\\app\\build\\intermediates\\dex\\debug\\mergeProjectDexDebug\\0\\classes.dex
-base.2=C\:\\Users\\David\\AndroidStudioProjects\\DJCrateCuratorNew\\app\\build\\intermediates\\dex\\debug\\mergeProjectDexDebug\\12\\classes.dex
-base.3=C\:\\Users\\David\\AndroidStudioProjects\\DJCrateCuratorNew\\app\\build\\intermediates\\dex\\debug\\mergeProjectDexDebug\\13\\classes.dex
-base.4=C\:\\Users\\David\\AndroidStudioProjects\\DJCrateCuratorNew\\app\\build\\intermediates\\dex\\debug\\mergeProjectDexDebug\\2\\classes.dex
-base.5=C\:\\Users\\David\\AndroidStudioProjects\\DJCrateCuratorNew\\app\\build\\intermediates\\dex\\debug\\mergeProjectDexDebug\\3\\classes.dex
-base.6=C\:\\Users\\David\\AndroidStudioProjects\\DJCrateCuratorNew\\app\\build\\intermediates\\dex\\debug\\mergeProjectDexDebug\\8\\classes.dex
-base.7=C\:\\Users\\David\\AndroidStudioProjects\\DJCrateCuratorNew\\app\\build\\intermediates\\dex\\debug\\mergeExtDexDebug\\classes2.dex
+#Thu Oct 02 10:33:32 CEST 2025
+base.0=C\:\\Users\\David\\AndroidStudioProjects\\DJCrateCurator2\\app\\build\\intermediates\\dex\\debug\\mergeExtDexDebug\\classes.dex
+base.1=C\:\\Users\\David\\AndroidStudioProjects\\DJCrateCurator2\\app\\build\\intermediates\\dex\\debug\\mergeProjectDexDebug\\0\\classes.dex
+base.2=C\:\\Users\\David\\AndroidStudioProjects\\DJCrateCurator2\\app\\build\\intermediates\\dex\\debug\\mergeProjectDexDebug\\12\\classes.dex
+base.3=C\:\\Users\\David\\AndroidStudioProjects\\DJCrateCurator2\\app\\build\\intermediates\\dex\\debug\\mergeProjectDexDebug\\13\\classes.dex
+base.4=C\:\\Users\\David\\AndroidStudioProjects\\DJCrateCurator2\\app\\build\\intermediates\\dex\\debug\\mergeProjectDexDebug\\2\\classes.dex
+base.5=C\:\\Users\\David\\AndroidStudioProjects\\DJCrateCurator2\\app\\build\\intermediates\\dex\\debug\\mergeProjectDexDebug\\3\\classes.dex
+base.6=C\:\\Users\\David\\AndroidStudioProjects\\DJCrateCurator2\\app\\build\\intermediates\\dex\\debug\\mergeProjectDexDebug\\8\\classes.dex
+base.7=C\:\\Users\\David\\AndroidStudioProjects\\DJCrateCurator2\\app\\build\\intermediates\\dex\\debug\\mergeExtDexDebug\\classes2.dex
 path.0=classes.dex
 path.1=0/classes.dex
 path.2=12/classes.dex

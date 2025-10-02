@@ -63,10 +63,10 @@ com.david.dcc.app-ui-tooling-preview-release-61 C:\Users\David\.gradle\caches\tr
 com.david.dcc.app-ui-tooling-data-release-62 C:\Users\David\.gradle\caches\transforms-4\f413532c58fb00e37048aebb3a35f0ca\transformed\ui-tooling-data-release\res
 com.david.dcc.app-startup-runtime-1.1.1-63 C:\Users\David\.gradle\caches\transforms-4\fa169b14a4424ef7aee680a9a67de918\transformed\startup-runtime-1.1.1\res
 com.david.dcc.app-lifecycle-runtime-release-64 C:\Users\David\.gradle\caches\transforms-4\fceea7eadc29c362271b9c0485cd6816\transformed\lifecycle-runtime-release\res
-com.david.dcc.app-pngs-65 C:\Users\David\AndroidStudioProjects\DJCrateCuratorNew\app\build\generated\res\pngs\debug
-com.david.dcc.app-resValues-66 C:\Users\David\AndroidStudioProjects\DJCrateCuratorNew\app\build\generated\res\resValues\debug
-com.david.dcc.app-packageDebugResources-67 C:\Users\David\AndroidStudioProjects\DJCrateCuratorNew\app\build\intermediates\incremental\debug\packageDebugResources\merged.dir
-com.david.dcc.app-packageDebugResources-68 C:\Users\David\AndroidStudioProjects\DJCrateCuratorNew\app\build\intermediates\incremental\debug\packageDebugResources\stripped.dir
-com.david.dcc.app-debug-69 C:\Users\David\AndroidStudioProjects\DJCrateCuratorNew\app\build\intermediates\merged_res\debug\mergeDebugResources
-com.david.dcc.app-debug-70 C:\Users\David\AndroidStudioProjects\DJCrateCuratorNew\app\src\debug\res
-com.david.dcc.app-main-71 C:\Users\David\AndroidStudioProjects\DJCrateCuratorNew\app\src\main\res
+com.david.dcc.app-pngs-65 C:\Users\David\AndroidStudioProjects\DJCrateCurator2\app\build\generated\res\pngs\debug
+com.david.dcc.app-resValues-66 C:\Users\David\AndroidStudioProjects\DJCrateCurator2\app\build\generated\res\resValues\debug
+com.david.dcc.app-packageDebugResources-67 C:\Users\David\AndroidStudioProjects\DJCrateCurator2\app\build\intermediates\incremental\debug\packageDebugResources\merged.dir
+com.david.dcc.app-packageDebugResources-68 C:\Users\David\AndroidStudioProjects\DJCrateCurator2\app\build\intermediates\incremental\debug\packageDebugResources\stripped.dir
+com.david.dcc.app-debug-69 C:\Users\David\AndroidStudioProjects\DJCrateCurator2\app\build\intermediates\merged_res\debug\mergeDebugResources
+com.david.dcc.app-debug-70 C:\Users\David\AndroidStudioProjects\DJCrateCurator2\app\src\debug\res
+com.david.dcc.app-main-71 C:\Users\David\AndroidStudioProjects\DJCrateCurator2\app\src\main\res
