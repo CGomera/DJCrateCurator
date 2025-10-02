@@ -45,12 +45,42 @@ class HomeVm(app: Application): AndroidViewModel(app) {
 
 @Composable
 fun HomeScreen(
+    snackbarHostState: SnackbarHostState,
     launchCsvPicker: () -> Unit,
-    setOnCsvPicked: (Uri) -> Unit,
+    registerOnCsvPicked: ((Uri) -> Unit) -> Unit,
     vm: HomeVm = viewModel()
 ) {
     var newCrateName by remember { mutableStateOf("") }
     var selectedCrate by remember { mutableStateOf<Crate?>(null) }
+
+    val scope = rememberCoroutineScope()
+    val latestSelectedCrate by rememberUpdatedState(selectedCrate)
+    val latestSnackbarHostState by rememberUpdatedState(snackbarHostState)
+
+    LaunchedEffect(registerOnCsvPicked) {
+        registerOnCsvPicked { uri ->
+            val crate = latestSelectedCrate
+            if (crate == null) {
+                scope.launch {
+                    latestSnackbarHostState.showSnackbar("Selecciona un crate antes de importar")
+                }
+                return@registerOnCsvPicked
+            }
+
+            vm.importCsvTo(crate.id, uri) { count ->
+                scope.launch {
+                    val message = if (count == 0) {
+                        "No se importaron pistas en \"${crate.name}\""
+                    } else {
+                        "Se importaron $count pistas en \"${crate.name}\""
+                    }
+                    latestSnackbarHostState.showSnackbar(message)
+                }
+                vm.refresh()
+            }
+        }
+    }
+
 
     Column(Modifier.padding(16.dp)) {
         Text("Crates", style = MaterialTheme.typography.headlineMedium)
@@ -84,7 +114,6 @@ fun HomeScreen(
                 }
             }
         }
-
 
         if (vm.loading) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
     }

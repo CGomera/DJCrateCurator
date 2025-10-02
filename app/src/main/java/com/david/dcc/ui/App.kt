@@ -8,6 +8,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -17,27 +18,27 @@ import com.david.dcc.ui.screens.HomeScreen
 fun App(
     snackbarHostState: SnackbarHostState,
     launchCsvPicker: () -> Unit,
-    setOnCsvPicked: ((Uri) -> Unit) -> Unit     // 👈 CORRECTO: recibe una función (Uri)->Unit
+    setOnCsvPicked: (cb: (Uri) -> Unit) -> Unit
 ) {
     val nav = rememberNavController()
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { padding ->
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+    ) { paddingValues ->
         NavHost(
             navController = nav,
             startDestination = "home",
-            modifier = Modifier.padding(padding)
+            modifier = Modifier.padding(paddingValues)
         ) {
-            composable(route = "home") {
+            composable("home") {
                 HomeScreen(
-                    launchCsvPicker = TODO(),
-                    setOnCsvPicked = TODO(),
-                    vm = TODO()
-                    // si de momento no usas estos callbacks en la pantalla,
-                    // puedes quitarlos de HomeScreen() o dejarlos para futuro
+                    snackbarHostState = snackbarHostState,
+                    launchCsvPicker = launchCsvPicker,
+                    registerOnCsvPicked = setOnCsvPicked,
+                    vm = viewModel()
                 )
             }
         }
     }
 }
+

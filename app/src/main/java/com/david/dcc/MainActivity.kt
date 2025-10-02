@@ -12,23 +12,30 @@ import androidx.compose.runtime.remember
 import com.david.dcc.ui.App
 
 class MainActivity : ComponentActivity() {
-    private var onCsvPicked: ((Uri) -> Unit)? = null
+
+    // En vez de nullable, dale un valor por defecto que no hace nada:
+    private var onCsvPicked: ((Uri) -> Unit) = {}
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val picker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-            uri?.let { onCsvPicked?.invoke(it) }
+        val picker = registerForActivityResult(
+            ActivityResultContracts.OpenDocument()
+        ) { uri: Uri? ->
+            uri?.let { onCsvPicked(it) }   // <- sin '!!' ni nullables
         }
 
         setContent {
             val snackbar = remember { SnackbarHostState() }
+
             App(
                 snackbarHostState = snackbar,
                 launchCsvPicker = {
-                    picker.launch(arrayOf("text/*", "text/comma-separated-values", "text/csv"))
+                    picker.launch(
+                        arrayOf("text/*", "text/csv", "text/comma-separated-values")
+                    )
                 },
-                setOnCsvPicked = { cb -> onCsvPicked = cb }
+                setOnCsvPicked = { cb -> onCsvPicked = cb } // se asigna desde la UI
             )
         }
     }
