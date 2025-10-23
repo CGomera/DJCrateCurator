@@ -13,13 +13,21 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.david.dcc.ui.screens.HomeScreen
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
+import com.david.dcc.ui.screens.CrateDetailScreen
+
 
 @Composable
 fun App(
     snackbarHostState: SnackbarHostState,
     launchCsvPicker: () -> Unit,
-    setOnCsvPicked: (cb: (Uri) -> Unit) -> Unit
-) {
+    setOnCsvPicked: (cb: (Uri) -> Unit) -> Unit,
+    launchCsvExporter: (String) -> Unit,
+    setOnCsvExported: (cb: (Uri) -> Unit) -> Unit,
+    launchJsonExporter: (String) -> Unit,
+    setOnJsonExported: (cb: (Uri) -> Unit) -> Unit,
+    ) {
     val nav = rememberNavController()
 
     Scaffold(
@@ -35,7 +43,22 @@ fun App(
                     snackbarHostState = snackbarHostState,
                     launchCsvPicker = launchCsvPicker,
                     registerOnCsvPicked = setOnCsvPicked,
+                    launchCsvExporter = launchCsvExporter,
+                    registerOnCsvExported = setOnCsvExported,
+                    launchJsonExporter = launchJsonExporter,
+                    registerOnJsonExported = setOnJsonExported,
                     vm = viewModel()
+                )
+            }
+
+            composable(
+                route = "crate/{crateId}",
+                arguments = listOf(navArgument("crateId") { type = NavType.LongType })
+            ) { backStackEntry ->
+                val crateId = backStackEntry.arguments?.getLong("crateId") ?: return@composable
+                CrateDetailScreen(
+                    crateId = crateId,
+                    onNavigateUp = { nav.popBackStack() }
                 )
             }
         }
