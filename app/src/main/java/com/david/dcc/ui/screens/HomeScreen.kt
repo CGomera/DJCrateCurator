@@ -237,7 +237,7 @@ class HomeVm(app: Application) : AndroidViewModel(app) {
                     onDone()
                 }
 
-                suspend fun assignExistingTag(trackId: Long, tag: Tag): TagOperationResult {
+    internal suspend fun assignExistingTag(trackId: Long, tag: Tag): TagOperationResult {
                     if (trackTags[trackId].orEmpty().any { it.id == tag.id }) {
                         return TagOperationResult.AlreadyAssigned(tag)
                     }
@@ -248,7 +248,7 @@ class HomeVm(app: Application) : AndroidViewModel(app) {
                     return TagOperationResult.Assigned(tag, created = false)
                 }
 
-                suspend fun createAndAssignTag(trackId: Long, name: String): TagOperationResult {
+    internal suspend fun createAndAssignTag(trackId: Long, name: String): TagOperationResult {
                     val label = name.trim()
                     if (label.isEmpty()) return TagOperationResult.InvalidInput
 
@@ -283,7 +283,7 @@ class HomeVm(app: Application) : AndroidViewModel(app) {
                     return TagOperationResult.Assigned(tag, created = created)
                 }
 
-                suspend fun removeTagFromTrack(trackId: Long, tag: Tag): Boolean {
+    internal suspend fun removeTagFromTrack(trackId: Long, tag: Tag): Boolean {
                     if (trackTags[trackId].orEmpty().none { it.id == tag.id }) return false
                     withContext(Dispatchers.IO) {
                         tagDao.deleteTrackTag(trackId, tag.id)
@@ -979,7 +979,7 @@ class HomeVm(app: Application) : AndroidViewModel(app) {
                                         return Color.hsl(hue, 0.45f, 0.5f)
                                     }
 
-                                    sealed interface TagOperationResult {
+                                    internal sealed interface TagOperationResult {
                                         data class Assigned(val tag: Tag, val created: Boolean) : TagOperationResult
                                         data class AlreadyAssigned(val tag: Tag) : TagOperationResult
                                         object InvalidInput : TagOperationResult
