@@ -27,7 +27,9 @@ fun App(
     setOnCsvExported: (cb: (Uri) -> Unit) -> Unit,
     launchJsonExporter: (String) -> Unit,
     setOnJsonExported: (cb: (Uri) -> Unit) -> Unit,
-    ) {
+    launchSetlistExporter: (String) -> Unit,
+    setOnSetlistExported: (cb: (Uri) -> Unit) -> Unit,
+) {
     val nav = rememberNavController()
 
     Scaffold(
@@ -47,6 +49,8 @@ fun App(
                     registerOnCsvExported = setOnCsvExported,
                     launchJsonExporter = launchJsonExporter,
                     registerOnJsonExported = setOnJsonExported,
+                    launchSetlistExporter = launchSetlistExporter,
+                    registerOnSetlistExported = setOnSetlistExported,
                     vm = viewModel()
                 )
             }

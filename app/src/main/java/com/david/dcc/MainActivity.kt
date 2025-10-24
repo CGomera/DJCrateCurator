@@ -15,6 +15,8 @@ class MainActivity : ComponentActivity() {
     private var onCsvPicked: ((Uri) -> Unit) = {}
     private var onCsvExported: ((Uri) -> Unit) = {}
     private var onJsonExported: ((Uri) -> Unit) = {}
+    private var onSetlistExported: ((Uri) -> Unit) = {}
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,6 +42,13 @@ class MainActivity : ComponentActivity() {
         }
 
 
+        val setlistExporter = registerForActivityResult(
+            ActivityResultContracts.CreateDocument("text/csv")
+        ) { uri: Uri? ->
+            uri?.let { onSetlistExported(it) }
+            onSetlistExported = {}
+        }
+
 
         setContent {
             val snackbar = remember { SnackbarHostState() }
@@ -55,7 +64,11 @@ class MainActivity : ComponentActivity() {
                 launchCsvExporter = { suggestedName -> csvExporter.launch(suggestedName) },
                 setOnCsvExported = { cb -> onCsvExported = cb },
                 launchJsonExporter = { suggestedName -> jsonExporter.launch(suggestedName) },
-                setOnJsonExported = { cb -> onJsonExported = cb }            )
+                setOnJsonExported = { cb -> onJsonExported = cb },
+                launchSetlistExporter = { suggestedName -> setlistExporter.launch(suggestedName) },
+                setOnSetlistExported = { cb -> onSetlistExported = cb }
+            )
         }
+
     }
 }

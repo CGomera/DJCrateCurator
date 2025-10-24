@@ -40,6 +40,9 @@ interface SetlistDao {
     @Insert
     suspend fun insert(setlist: Setlist): Long
 
+    @Query("SELECT * FROM setlists WHERE id = :setlistId LIMIT 1")
+    suspend fun byId(setlistId: Long): Setlist?
+
     @Query("SELECT s.*, COUNT(si.trackId) AS trackCount FROM setlists s LEFT JOIN setlist_items si ON s.id = si.setlistId GROUP BY s.id ORDER BY s.name")
     suspend fun allWithCounts(): List<SetlistWithCount>
 
