@@ -1,43 +1,33 @@
-     # Gradle
-     .gradle/
-     **/build/
-     local.properties
-     /.idea/caches
-     /.idea/libraries
-     /.idea/workspace.xml
-     /.idea/tasks.xml
-     /.idea/gradle.xml
-     /.idea/modules.xml
-     /.idea/navEditor.xml
-     /.idea/assetWizardSettings.xml
-     *.iml
-     **/.cxx/
-     **/.kotlin/
-     **/kapt*/
-     **/ksp*/
-     **/.transforms/
-     **/.navigation/
-     **/.room/
+# Gradle
+.gradle/
+**/build/
+local.properties
+
+# Android Studio
+.idea/
+*.iml
+
+# Build outputs
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
 
 
-     # Android/Studio
-     captures/
-     .externalNativeBuild/
+# Native build
+**/.cxx/
+**/.kotlin/
+**/kapt*/
+**/ksp*/
+**/.transforms/
+**/.navigation/
+**/.room/
 
-     # Artifacts
-     *.apk
-     *.aab
-     *.ap_
-     *.dex
-     *.class
+# Captures
+captures/
+.externalNativeBuild/
 
-     # OS
-     .DS_Store
-     Thumbs.db
-
-    # Local only
-    local.properties
-
-    # OS
-    .DS_Store
-    Thumbs.db
+# OS
+.DS_Store
+Thumbs.db
