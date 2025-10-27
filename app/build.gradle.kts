@@ -32,6 +32,7 @@ android {
 kotlin { jvmToolchain(17) }
 
 dependencies {
+    implementation("androidx.databinding:compiler:3.2.0-alpha11")
     val composeBom = platform("androidx.compose:compose-bom:2024.09.02")
     implementation(composeBom)
     androidTestImplementation(composeBom)

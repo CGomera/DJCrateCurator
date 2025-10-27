@@ -13,7 +13,10 @@ data class Track(
     val rating: Int?,
     val energy: Int?,
     val comment: String?,
-    val path: String?
+    val path: String?,
+    @ColumnInfo(defaultValue = "NULL") val durationSeconds: Int? = null,
+    @ColumnInfo(defaultValue = "NULL") val colorHex: String? = null,
+    @ColumnInfo(defaultValue = "NULL") val coverArtUri: String? = null
 )
 
 @Entity(tableName = "crates")
@@ -39,17 +42,6 @@ data class CrateTrack(
 @Entity(tableName = "setlists")
 data class Setlist(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val name: String
-)
-
-@Entity(
-    tableName = "setlist_items",
-    primaryKeys = ["setlistId", "position"],
-    indices = [Index("trackId")],
-    foreignKeys = [
-        ForeignKey(entity = Setlist::class, parentColumns = ["id"], childColumns = ["setlistId"], onDelete = ForeignKey.CASCADE),
-        ForeignKey(entity = Track::class, parentColumns = ["id"], childColumns = ["trackId"], onDelete = ForeignKey.SET_NULL)
-    ]
 )
 data class SetlistItem(
     val setlistId: Long,
@@ -74,4 +66,21 @@ data class Tag(
 data class TrackTag(
     val trackId: Long,
     val tagId: Long
+)
+
+@Entity(tableName = "filter_presets")
+data class FilterPreset(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    val query: String?,
+    val genre: String?,
+    val artist: String?,
+    val key: String?,
+    val bpmMin: Float?,
+    val bpmMax: Float?,
+    val ratingMin: Int?,
+    val ratingMax: Int?,
+    val energyMin: Int?,
+    val energyMax: Int?,
+    @ColumnInfo(name = "tagIds") val tagIdsCsv: String?
 )

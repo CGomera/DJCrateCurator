@@ -8,6 +8,9 @@ interface TrackDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(track: Track): Long
 
+    @Update
+    suspend fun update(track: Track)
+
     @Query("SELECT * FROM tracks WHERE id=:id")
     suspend fun byId(id: Long): Track?
 
@@ -16,6 +19,18 @@ interface TrackDao {
 
     @Query("SELECT * FROM tracks ORDER BY title")
     suspend fun all(): List<Track>
+
+    @Query("SELECT * FROM tracks WHERE LOWER(title) = LOWER(:title) AND LOWER(artist) = LOWER(:artist) LIMIT 1")
+    suspend fun findByTitleAndArtist(title: String, artist: String): Track?
+
+    @Query("UPDATE tracks SET colorHex = :colorHex WHERE id = :trackId")
+    suspend fun updateColor(trackId: Long, colorHex: String?)
+
+    @Query("UPDATE tracks SET energy = :energy WHERE id = :trackId")
+    suspend fun updateEnergy(trackId: Long, energy: Int?)
+
+    @Query("UPDATE tracks SET rating = :rating WHERE id = :trackId")
+    suspend fun updateRating(trackId: Long, rating: Int?)
 }
 
 @Dao
@@ -39,44 +54,45 @@ interface CrateDao {
 interface SetlistDao {
     @Insert
     suspend fun insert(setlist: Setlist): Long
+    fun byId(setlistId: Long)
+    fun tracksForSetlist(setlistId: Long)
 
-    @Query("SELECT * FROM setlists WHERE id = :setlistId LIMIT 1")
-    suspend fun byId(setlistId: Long): Setlist?
+    //@Query("SELECT * FROM setlists WHERE id = :setlistId LIMIT 1")
 
-    @Query("SELECT s.*, COUNT(si.trackId) AS trackCount FROM setlists s LEFT JOIN setlist_items si ON s.id = si.setlistId GROUP BY s.id ORDER BY s.name")
-    suspend fun allWithCounts(): List<SetlistWithCount>
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsertItem(item: SetlistItem)
-
-    @Query("DELETE FROM setlist_items WHERE setlistId=:setlistId")
-    suspend fun clearItems(setlistId: Long)
-
-    @Query("SELECT si.position, t.* FROM setlist_items si LEFT JOIN tracks t ON si.trackId = t.id WHERE si.setlistId = :setlistId ORDER BY si.position")
-    suspend fun tracksForSetlist(setlistId: Long): List<SetlistTrackView>
 }
+    @Dao
+    interface TagDao {
+        @Query("SELECT * FROM tags ORDER BY name")
+        suspend fun all(): List<Tag>
 
-@Dao
-interface TagDao {
-    @Query("SELECT * FROM tags ORDER BY name")
-    suspend fun all(): List<Tag>
+        @Query("SELECT * FROM tags WHERE LOWER(name) = LOWER(:name) LIMIT 1")
+        suspend fun findByName(name: String): Tag?
 
-    @Query("SELECT * FROM tags WHERE LOWER(name) = LOWER(:name) LIMIT 1")
-    suspend fun findByName(name: String): Tag?
+        @Insert(onConflict = OnConflictStrategy.IGNORE)
+        suspend fun insert(tag: Tag): Long
 
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insert(tag: Tag): Long
+        @Insert(onConflict = OnConflictStrategy.IGNORE)
+        suspend fun insertTrackTag(link: TrackTag)
 
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insertTrackTag(link: TrackTag)
+        @Query("DELETE FROM track_tags WHERE trackId = :trackId AND tagId = :tagId")
+        suspend fun deleteTrackTag(trackId: Long, tagId: Long)
 
-    @Query("DELETE FROM track_tags WHERE trackId = :trackId AND tagId = :tagId")
-    suspend fun deleteTrackTag(trackId: Long, tagId: Long)
+        @Query(
+            "SELECT tt.trackId AS trackId, t.id AS id, t.name AS name " +
+                    "FROM track_tags tt INNER JOIN tags t ON t.id = tt.tagId " +
+                    "WHERE tt.trackId IN (:trackIds)"
+        )
+        suspend fun tagsForTrackIds(trackIds: List<Long>): List<TrackTagAssignment>
+    }
 
-    @Query(
-        "SELECT tt.trackId AS trackId, t.id AS id, t.name AS name " +
-                "FROM track_tags tt INNER JOIN tags t ON t.id = tt.tagId " +
-                "WHERE tt.trackId IN (:trackIds)"
-    )
-    suspend fun tagsForTrackIds(trackIds: List<Long>): List<TrackTagAssignment>
-}
+    @Dao
+    interface FilterPresetDao {
+        @Query("SELECT * FROM filter_presets ORDER BY name")
+        suspend fun all(): List<FilterPreset>
+
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun insert(preset: FilterPreset): Long
+
+        @Query("DELETE FROM filter_presets WHERE id = :presetId")
+        suspend fun delete(presetId: Long)
+    }
