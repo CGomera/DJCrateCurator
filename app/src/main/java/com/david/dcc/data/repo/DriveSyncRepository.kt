@@ -1,11 +1,11 @@
 package com.david.dcc.data.repo
 
 import android.content.Context
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import com.david.dcc.data.db.AppDb
 import com.david.dcc.data.model.CrateTrack
 import com.david.dcc.data.model.Track
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -74,7 +74,7 @@ class DriveSyncRepository(private val context: Context, private val db: AppDb) {
                         path = entry.optStringOrNull("path"),
                         durationSeconds = entry.optIntOrNull("duration"),
                         colorHex = entry.optStringOrNull("color"),
-                        coverArtUri = entry.optStringOrNull("coverArt")
+                        coverArtUri = entry.optStringOrNull("coverArt"),
                     )
                     val newId = db.trackDao().upsert(track)
                     db.crateDao().addTrack(CrateTrack(crateId, newId))

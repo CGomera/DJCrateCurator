@@ -1,4 +1,3 @@
-//comentario para hacer commit
 package com.david.dcc.ui
 
 import android.net.Uri
@@ -9,14 +8,15 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.david.dcc.ui.screens.HomeScreen
-import androidx.navigation.NavType
+
 import androidx.navigation.navArgument
 import com.david.dcc.ui.screens.CrateDetailScreen
 
+import com.david.dcc.ui.screens.HomeScreen
 
 @Composable
 fun App(
@@ -33,12 +33,12 @@ fun App(
     val nav = rememberNavController()
 
     Scaffold(
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
     ) { paddingValues ->
         NavHost(
             navController = nav,
             startDestination = "home",
-            modifier = Modifier.padding(paddingValues)
+            modifier = Modifier.padding(paddingValues),
         ) {
             composable("home") {
                 HomeScreen(
@@ -51,21 +51,20 @@ fun App(
                     registerOnJsonExported = setOnJsonExported,
                     launchSetlistExporter = launchSetlistExporter,
                     registerOnSetlistExported = setOnSetlistExported,
-                    vm = viewModel()
+                    vm = viewModel(),
                 )
             }
 
             composable(
                 route = "crate/{crateId}",
-                arguments = listOf(navArgument("crateId") { type = NavType.LongType })
+                arguments = listOf(navArgument("crateId") { type = NavType.LongType }),
             ) { backStackEntry ->
                 val crateId = backStackEntry.arguments?.getLong("crateId") ?: return@composable
                 CrateDetailScreen(
                     crateId = crateId,
-                    onNavigateUp = { nav.popBackStack() }
+                    onNavigateUp = { nav.popBackStack() },
                 )
             }
         }
     }
 }
-

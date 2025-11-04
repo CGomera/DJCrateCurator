@@ -30,11 +30,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -45,8 +46,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RangeSlider
@@ -297,8 +296,8 @@ class HomeVm(app: Application) : AndroidViewModel(app) {
                 SetlistItem(
                     setlistId = setlistId,
                     position = index,
-                    trackId = track.id
-                )
+                    trackId = track.id,
+                ),
             )
         }
         setlists = db.setlistDao().allWithCounts()
@@ -352,13 +351,13 @@ class HomeVm(app: Application) : AndroidViewModel(app) {
             }
         } ?: return TagOperationResult.InvalidInput
 
-
-    if (trackTags[trackId].orEmpty().any { it.id == tag.id }) {
-        if (created) {
-            refreshAllTags()
+        if (trackTags[trackId].orEmpty().any { it.id == tag.id }) {
+            if (created) {
+                refreshAllTags()
+            }
+            return TagOperationResult.AlreadyAssigned(tag)
         }
-        return TagOperationResult.AlreadyAssigned(tag)
-    }
+
 
     withContext(Dispatchers.IO) {
         tagDao.insertTrackTag(TrackTag(trackId = trackId, tagId = tag.id))
@@ -431,6 +430,8 @@ fun HomeScreen(
     val setlists = vm.setlists
     val setlistDetails = vm.setlistDetails
 
+    val filteredTracks = vm.filteredTracks()
+
     var newCrateName by remember { mutableStateOf("") }
     var colorFilter by remember { mutableStateOf<CrateColorCategory?>(null) }
     var setlistName by remember { mutableStateOf("Set Ibiza 2025") }
@@ -476,7 +477,7 @@ fun HomeScreen(
                 value = newCrateName,
                 onValueChange = { newCrateName = it },
                 label = { Text("Nombre del crate") },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
             )
             Spacer(Modifier.width(8.dp))
             Button(onClick = {
@@ -500,7 +501,7 @@ fun HomeScreen(
                     FilterChip(
                         selected = colorFilter == null,
                         onClick = { colorFilter = null },
-                        label = { Text("Todos") }
+                        label = { Text("Todos") },
                     )
                 }
 
@@ -514,9 +515,9 @@ fun HomeScreen(
                                 Modifier
                                     .size(12.dp)
                                     .clip(CircleShape)
-                                    .background(category.color)
+                                    .background(category.color),
                             )
-                        }
+                        },
                     )
                 }
             }
@@ -535,136 +536,101 @@ fun HomeScreen(
                             Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
                         } else {
                             Modifier
-                        }
+                        },
                     )
                 ElevatedCard(
                     modifier = cardModifier,
                     onClick = { vm.selectCrate(crate) },
                     shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.elevatedCardColors()
+                    colors = CardDefaults.elevatedCardColors(),
                 ) {
                     Column(
                         Modifier
                             .fillMaxSize()
                             .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(48.dp)
-                                .clip(RoundedCornerShape(8.dp))
+                                .height(60.dp)
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
                                 .background(colorForCrate(crate)),
-                            contentAlignment = Alignment.Center
+                            contentAlignment = Alignment.Center,
                         ) {
-                            Text(
-                                crate.name.take(2).uppercase(),
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Text(crate.name.take(1).uppercase(), color = Color.White, style = MaterialTheme.typography.headlineMedium)
                         }
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(
-                                crate.name,
-                                style = MaterialTheme.typography.titleMedium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text("${summary.trackCount} pistas", style = MaterialTheme.typography.bodySmall)
-                        }
-                        TextButton(onClick = {
-                            vm.selectCrate(crate)
-                            launchCsvPicker()
-                        }) {
-                            Icon(Icons.Filled.Add, contentDescription = null)
-                            Spacer(Modifier.width(4.dp))
-                            Text("Importar CSV")
-                        }
+                        Text(crate.name, style = MaterialTheme.typography.titleMedium)
+                        Text("${summary.trackCount} pistas", style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(16.dp))
 
         selectedCrate?.let { crate ->
-            val filteredTracks = vm.filteredTracks()
-            val recommendedTracks = vm.recommendedTracks
+            Text("Tracks en ${crate.name}", style = MaterialTheme.typography.headlineSmall)
+            Spacer(Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
 
-            Text(
-                "${crate.name} · Gestión avanzada",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold
-            )
-            Spacer(Modifier.height(8.dp))
-
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
-                    .padding(16.dp)
-            ) {
-                Text("Búsqueda y filtros", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
                     value = vm.searchQuery,
                     onValueChange = { vm.searchQuery = it },
-                    label = { Text("Busca por título o artista") },
-                    modifier = Modifier.fillMaxWidth(),
-                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) }
+                    label = { Text("Buscar") },
+                    modifier = Modifier.weight(1f),
                 )
-                Spacer(Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                    FilterDropdown(value = vm.genreFilter, options = vm.availableGenres, label = "Género") {
-                        vm.genreFilter = it
-                    }
-                    FilterDropdown(value = vm.artistFilter, options = vm.availableArtists, label = "Artista") {
-                        vm.artistFilter = it
-                    }
-                    FilterDropdown(value = vm.keyFilter, options = vm.availableKeys, label = "Key") {
-                        vm.keyFilter = it
-                    }
-
-                }
-                vm.bpmBounds?.let { bounds ->
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        "Filtra por BPM (${bounds.start.toInt()} - ${bounds.endInclusive.toInt()})",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    RangeSlider(
-                        value = vm.bpmRange ?: bounds,
-                        onValueChange = { vm.bpmRange = it },
-                        valueRange = bounds
-                    )
-                }
-                Spacer(Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    AssistChip(onClick = { vm.clearFilters() }, label = { Text("Limpiar filtros") })
-                    AssistChip(onClick = { launchCsvPicker() }, label = { Text("Importar desde CSV/Drive") })
-                }
+                Button(onClick = { vm.clearFilters() }) { Text("Limpiar filtros") }
+            }
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                FilterDropdown(
+                    value = vm.genreFilter,
+                    options = vm.availableGenres,
+                    label = "Género",
+                    onSelected = { vm.genreFilter = it },
+                )
+                FilterDropdown(
+                    value = vm.artistFilter,
+                    options = vm.availableArtists,
+                    label = "Artista",
+                    onSelected = { vm.artistFilter = it },
+                )
+                FilterDropdown(
+                    value = vm.keyFilter,
+                    options = vm.availableKeys,
+                    label = "Tonalidad",
+                    onSelected = { vm.keyFilter = it },
+                )
             }
 
-        Spacer(Modifier.height(16.dp))
+            vm.bpmBounds?.let { bounds ->
+                Spacer(Modifier.height(8.dp))
+                Text("Rango BPM", style = MaterialTheme.typography.labelMedium)
+                RangeSlider(
+                    value = vm.bpmRange ?: bounds,
+                    onValueChange = { vm.bpmRange = it },
+                    valueRange = bounds,
+                )
+            }
 
+            Spacer(Modifier.height(12.dp))
 
-            Text("Interfaz tipo crate", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
             LazyVerticalGrid(
-                columns = GridCells.Adaptive(180.dp),
-                modifier = Modifier.heightIn(max = 420.dp),
+                columns = GridCells.Adaptive(280.dp),
+                modifier = Modifier.heightIn(min = 120.dp).fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(filteredTracks, key = { it.id }) { track ->
-                    val isSelected = track.id in selectedTrackIds
-                    val tagsForTrack = trackTags[track.id].orEmpty()
+                    val tags = trackTags[track.id].orEmpty()
+
                     TrackCard(
                         track = track,
-                        tags = tagsForTrack,
-                        selected = isSelected,
-                        onSelectedChange = { checked ->
-                            selectedTrackIds = if (checked) {
+                        tags = tags,
+                        selected = track.id in selectedTrackIds,
+                        onSelectedChange = { isSelected ->
+                            selectedTrackIds = if (isSelected) {
                                 selectedTrackIds + track.id
                             } else {
                                 selectedTrackIds - track.id
@@ -678,7 +644,7 @@ fun HomeScreen(
                                 }
                             }
                         },
-                        onEditTags = { tagEditorTarget = track }
+                        onEditTags = { tagEditorTarget = track },
                     )
                 }
             }
@@ -690,7 +656,7 @@ fun HomeScreen(
                 value = setlistName,
                 onValueChange = { setlistName = it },
                 label = { Text("Nombre del setlist") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             )
             Spacer(Modifier.height(8.dp))
             Button(onClick = {
@@ -712,11 +678,11 @@ fun HomeScreen(
 
             Text("Recomendaciones inteligentes", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(8.dp))
-            if (recommendedTracks.isEmpty()) {
+            if (vm.recommendedTracks.isEmpty()) {
                 Text("Añade más pistas para recibir recomendaciones basadas en BPM, género y tonalidad.")
             } else {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(recommendedTracks) { track ->
+                    items(vm.recommendedTracks) { track ->
                         RecommendationCard(track = track) {
                             vm.addTrackToCrate(track, crate) {
                                 snackbarScope.launch {
@@ -803,13 +769,13 @@ fun HomeScreen(
                                     Column(
                                         Modifier
                                             .fillMaxWidth()
-                                            .padding(vertical = 6.dp)
+                                            .padding(vertical = 6.dp),
                                     ) {
                                         Text(
                                             "${trackView.position + 1}. ${track.artist} - ${track.title}",
                                             style = MaterialTheme.typography.bodySmall,
                                             maxLines = 2,
-                                            overflow = TextOverflow.Ellipsis
+                                            overflow = TextOverflow.Ellipsis,
                                         )
                                         val tagsForTrack = trackTags[track.id].orEmpty()
                                         TagPillRow(
@@ -821,7 +787,7 @@ fun HomeScreen(
                                                     }
                                                 }
                                             },
-                                            onEditTags = { tagEditorTarget = track }
+                                            onEditTags = { tagEditorTarget = track },
 
                                         )
                                     }
@@ -843,7 +809,7 @@ fun HomeScreen(
                 snackbarHostState = snackbarHostState,
                 onAddExistingTag = { tag -> vm.assignExistingTag(track.id, tag) },
                 onCreateTag = { name -> vm.createAndAssignTag(track.id, name) },
-                onDismiss = { tagEditorTarget = null }
+                onDismiss = { tagEditorTarget = null },
             )
         }
 
@@ -870,7 +836,7 @@ private fun FilterDropdown(
             readOnly = true,
             label = { Text(label) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier.menuAnchor()
+            modifier = Modifier.menuAnchor(),
         )
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(text = { Text("Sin filtro") }, onClick = {
@@ -900,7 +866,7 @@ private fun TrackCard(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 200.dp),
-        onClick = { onSelectedChange(!selected) }
+        onClick = { onSelectedChange(!selected) },
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Box(
@@ -909,12 +875,12 @@ private fun TrackCard(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
                     .background(colorForTrack(track)),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = track.title.take(1).uppercase(),
                     style = MaterialTheme.typography.headlineMedium,
-                    color = Color.White
+                    color = Color.White,
                 )
             }
             Text(track.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -945,7 +911,7 @@ private fun TagPillRow(
 ) {
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         tags.forEach { tag ->
             InputChip(
@@ -956,13 +922,13 @@ private fun TagPillRow(
                     IconButton(onClick = { onRemoveTag(tag) }) {
                         Icon(Icons.Filled.Close, contentDescription = "Eliminar etiqueta ${tag.name}")
                     }
-                }
+                },
             )
         }
         AssistChip(
             onClick = onEditTags,
             leadingIcon = { Icon(Icons.Filled.Add, contentDescription = null) },
-            label = { Text(if (tags.isEmpty()) "Añadir etiquetas" else "Editar etiquetas") }
+            label = { Text(if (tags.isEmpty()) "Añadir etiquetas" else "Editar etiquetas") },
         )
     }
 }
@@ -993,7 +959,7 @@ private fun TagEditorDialog(
                     Text("Etiquetas asignadas")
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         assignedTags.forEach { tag ->
                             AssistChip(onClick = {}, label = { Text(tag.name) }, enabled = false)

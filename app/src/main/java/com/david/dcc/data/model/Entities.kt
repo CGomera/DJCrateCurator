@@ -1,6 +1,10 @@
 package com.david.dcc.data.model
 
-import androidx.room.*
+import androidx.room.ColumnInfo
+import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.Index
+import androidx.room.PrimaryKey
 
 @Entity(tableName = "tracks")
 data class Track(
@@ -16,13 +20,13 @@ data class Track(
     val path: String?,
     @ColumnInfo(defaultValue = "NULL") val durationSeconds: Int? = null,
     @ColumnInfo(defaultValue = "NULL") val colorHex: String? = null,
-    @ColumnInfo(defaultValue = "NULL") val coverArtUri: String? = null
+    @ColumnInfo(defaultValue = "NULL") val coverArtUri: String? = null,
 )
 
 @Entity(tableName = "crates")
 data class Crate(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val name: String
+    val name: String,
 )
 
 @Entity(
@@ -30,42 +34,83 @@ data class Crate(
     primaryKeys = ["crateId", "trackId"],
     indices = [Index("trackId")],
     foreignKeys = [
-        ForeignKey(entity = Crate::class, parentColumns = ["id"], childColumns = ["crateId"], onDelete = ForeignKey.CASCADE),
-        ForeignKey(entity = Track::class, parentColumns = ["id"], childColumns = ["trackId"], onDelete = ForeignKey.CASCADE)
-    ]
+            ForeignKey(
+            entity = Crate::class,
+    parentColumns = ["id"],
+    childColumns = ["crateId"],
+    onDelete = ForeignKey.CASCADE,
+),
+ForeignKey(
+entity = Track::class,
+parentColumns = ["id"],
+childColumns = ["trackId"],
+onDelete = ForeignKey.CASCADE,
+),
+],
 )
 data class CrateTrack(
     val crateId: Long,
-    val trackId: Long
+    val trackId: Long,
 )
 
 @Entity(tableName = "setlists")
 data class Setlist(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+)
+
+@Entity(
+    tableName = "setlist_items",
+    primaryKeys = ["setlistId", "position"],
+    indices = [Index("trackId")],
+    foreignKeys = [
+        ForeignKey(
+            entity = Setlist::class,
+            parentColumns = ["id"],
+            childColumns = ["setlistId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+        ForeignKey(
+            entity = Track::class,
+            parentColumns = ["id"],
+            childColumns = ["trackId"],
+            onDelete = ForeignKey.SET_NULL,
+        ),
+    ],
 )
 data class SetlistItem(
     val setlistId: Long,
     val position: Int,
-    val trackId: Long?
+    val trackId: Long?,
 )
 
 @Entity(tableName = "tags")
 data class Tag(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val name: String
+    val name: String,
 )
 
 @Entity(
     tableName = "track_tags",
     primaryKeys = ["trackId", "tagId"],
     foreignKeys = [
-        ForeignKey(entity = Track::class, parentColumns = ["id"], childColumns = ["trackId"], onDelete = ForeignKey.CASCADE),
-        ForeignKey(entity = Tag::class, parentColumns = ["id"], childColumns = ["tagId"], onDelete = ForeignKey.CASCADE)
-    ]
+            ForeignKey(
+            entity = Track::class,
+    parentColumns = ["id"],
+    childColumns = ["trackId"],
+    onDelete = ForeignKey.CASCADE,
+),
+ForeignKey(
+entity = Tag::class,
+parentColumns = ["id"],
+childColumns = ["tagId"],
+onDelete = ForeignKey.CASCADE,
+),
+],
 )
 data class TrackTag(
     val trackId: Long,
-    val tagId: Long
+    val tagId: Long,
 )
 
 @Entity(tableName = "filter_presets")
@@ -82,5 +127,6 @@ data class FilterPreset(
     val ratingMax: Int?,
     val energyMin: Int?,
     val energyMax: Int?,
-    @ColumnInfo(name = "tagIds") val tagIdsCsv: String?
+
+@ColumnInfo(name = "tagIds") val tagIdsCsv: String?,
 )
