@@ -1,6 +1,7 @@
 package com.david.dcc.data.repo
 
 import android.content.Context
+import androidx.room.withTransaction
 import com.david.dcc.data.db.AppDb
 import com.david.dcc.data.model.CrateTrack
 import com.david.dcc.data.model.Track
@@ -24,8 +25,9 @@ class DriveSyncRepository(private val context: Context, private val db: AppDb) {
     }
 
     suspend fun uploadCrate(crateId: Long): DriveSyncResult = withContext(Dispatchers.IO) {
-        runCatching {
-            val crate = db.crateDao().byId(crateId) ?: return@withContext DriveSyncResult.NotFound("Crate no encontrado")
+        try {
+            val crate = db.crateDao().byId(crateId)
+                ?: return@withContext DriveSyncResult.NotFound("Crate no encontrado")
             val tracks = db.crateDao().tracksInCrate(crateId)
             val payload = JSONObject().apply {
                 put("crateId", crate.id)
@@ -40,7 +42,7 @@ class DriveSyncRepository(private val context: Context, private val db: AppDb) {
             val file = File(driveFolder, "crate_${crate.id}.json")
             file.writeText(payload.toString(2))
             DriveSyncResult.Success("Backup creado en ${file.absolutePath}", tracks.size)
-        }.getOrElse { error ->
+        } catch (error: Throwable) {
             DriveSyncResult.Failure(error)
         }
     }
@@ -50,17 +52,19 @@ class DriveSyncRepository(private val context: Context, private val db: AppDb) {
         if (!file.exists()) {
             return@withContext DriveSyncResult.NotFound("No existe copia en Drive local para el crate $crateId")
         }
-        runCatching {
+        try {
             val payload = JSONObject(file.readText())
             val tracksArray = payload.optJSONArray("tracks") ?: JSONArray()
             var imported = 0
-            db.runInTransaction {
+            db.withTransaction {
+                val trackDao = db.trackDao()
+                val crateDao = db.crateDao()
                 for (i in 0 until tracksArray.length()) {
                     val entry = tracksArray.getJSONObject(i)
                     val title = entry.optString("title")
                     val artist = entry.optString("artist")
                     if (title.isBlank() && artist.isBlank()) continue
-                    val existing = db.trackDao().findByTitleAndArtist(title, artist)
+                    val existing = trackDao.findByTitleAndArtist(title, artist)
                     val track = Track(
                         id = existing?.id ?: 0,
                         title = title,
@@ -76,13 +80,13 @@ class DriveSyncRepository(private val context: Context, private val db: AppDb) {
                         colorHex = entry.optStringOrNull("color"),
                         coverArtUri = entry.optStringOrNull("coverArt"),
                     )
-                    val newId = db.trackDao().upsert(track)
-                    db.crateDao().addTrack(CrateTrack(crateId, newId))
+                    val newId = trackDao.upsert(track)
+                    crateDao.addTrack(CrateTrack(crateId, newId))
                     imported++
                 }
             }
             DriveSyncResult.Success("Sincronizados $imported temas desde Drive", imported)
-        }.getOrElse { error ->
+        } catch (error: Throwable) {
             DriveSyncResult.Failure(error)
         }
     }
