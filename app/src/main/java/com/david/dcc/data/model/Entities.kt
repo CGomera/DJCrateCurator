@@ -36,17 +36,17 @@ data class Crate(
     foreignKeys = [
             ForeignKey(
             entity = Crate::class,
-    parentColumns = ["id"],
-    childColumns = ["crateId"],
-    onDelete = ForeignKey.CASCADE,
-),
-ForeignKey(
-entity = Track::class,
-parentColumns = ["id"],
-childColumns = ["trackId"],
-onDelete = ForeignKey.CASCADE,
-),
-],
+            parentColumns = ["id"],
+            childColumns = ["crateId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+            ForeignKey(
+            entity = Track::class,
+            parentColumns = ["id"],
+            childColumns = ["trackId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
 )
 data class CrateTrack(
     val crateId: Long,
@@ -96,17 +96,17 @@ data class Tag(
     foreignKeys = [
             ForeignKey(
             entity = Track::class,
-    parentColumns = ["id"],
-    childColumns = ["trackId"],
-    onDelete = ForeignKey.CASCADE,
-),
-ForeignKey(
-entity = Tag::class,
-parentColumns = ["id"],
-childColumns = ["tagId"],
-onDelete = ForeignKey.CASCADE,
-),
-],
+            parentColumns = ["id"],
+            childColumns = ["trackId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+            ForeignKey(
+            entity = Tag::class,
+            parentColumns = ["id"],
+            childColumns = ["tagId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
 )
 data class TrackTag(
     val trackId: Long,

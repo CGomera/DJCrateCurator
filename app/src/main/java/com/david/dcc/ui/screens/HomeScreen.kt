@@ -67,9 +67,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import com.david.dcc.data.db.AppDb
 import com.david.dcc.data.model.Crate
 import com.david.dcc.data.model.CrateTrack
@@ -88,9 +89,10 @@ import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import kotlin.math.absoluteValue
 
-class HomeVm(app: Application) : AndroidViewModel(app) {
-    private val db = AppDb.get(app)
-    private val importRepo = ImportRepository(app, db)
+
+class HomeVm(application: Application) : ViewModel() {
+    private val db = AppDb.get(application)
+    private val importRepo = ImportRepository(application, db)
     private val tagDao = db.tagDao()
 
     var crateSummaries by mutableStateOf<List<CrateWithTrackCount>>(emptyList())
@@ -351,6 +353,7 @@ class HomeVm(app: Application) : AndroidViewModel(app) {
             }
         } ?: return TagOperationResult.InvalidInput
 
+
         if (trackTags[trackId].orEmpty().any { it.id == tag.id }) {
             if (created) {
                 refreshAllTags()
@@ -358,10 +361,10 @@ class HomeVm(app: Application) : AndroidViewModel(app) {
             return TagOperationResult.AlreadyAssigned(tag)
         }
 
+                withContext(Dispatchers.IO) {
+                    tagDao.insertTrackTag(TrackTag(trackId = trackId, tagId = tag.id))
+                }
 
-    withContext(Dispatchers.IO) {
-        tagDao.insertTrackTag(TrackTag(trackId = trackId, tagId = tag.id))
-    }
     refreshAllTags()
     refreshTrackTags(listOf(trackId))
     return TagOperationResult.Assigned(tag, created = created)
@@ -401,6 +404,11 @@ private fun keyCompatibilityScore(preferredKeys: Set<String>, candidateKey: Stri
     val sameNumber = preferredKeys.any { it.startsWith(candidateNumber) }
     return if (sameNumber) 8.0 else 16.0
 }
+    companion object {
+        fun factory(application: Application) = viewModelFactory {
+            initializer { HomeVm(application) }
+        }
+    }
 }
 
 private fun normalizeKey(value: String?): String? = value?.trim()?.uppercase()?.takeIf { it.isNotEmpty() }
@@ -417,7 +425,7 @@ fun HomeScreen(
     registerOnJsonExported: ((Uri) -> Unit) -> Unit,
     launchSetlistExporter: (String) -> Unit,
     registerOnSetlistExported: ((Uri) -> Unit) -> Unit,
-    vm: HomeVm = viewModel(),
+    vm: HomeVm,
 ) {
     val snackbarScope = rememberCoroutineScope()
     val snackbarHost by rememberUpdatedState(snackbarHostState)
@@ -973,7 +981,7 @@ private fun TagEditorDialog(
                 } else {
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         availableTags.forEach { tag ->
                             FilterChip(
@@ -991,7 +999,7 @@ private fun TagEditorDialog(
                                         }
                                     }
                                     },
-                                    label = { Text(tag.name) }
+                                    label = { Text(tag.name) },
                                     )
                                 }
                         }
@@ -1004,7 +1012,7 @@ private fun TagEditorDialog(
                     onValueChange = { newTagName = it },
                     label = { Text("Nueva etiqueta") },
                     singleLine = true,
-                    enabled = !busy
+                    enabled = !busy,
                 )
             }
         },
@@ -1025,7 +1033,7 @@ private fun TagEditorDialog(
                         }
                     }
                 },
-                enabled = !busy && newTagName.isNotBlank()
+                enabled = !busy && newTagName.isNotBlank(),
             ) {
                 Text("Crear y asignar")
             }
@@ -1034,7 +1042,7 @@ private fun TagEditorDialog(
             TextButton(onClick = { if (!busy) onDismiss() }) {
                 Text("Cerrar")
             }
-        }
+        },
     )
 }
 
