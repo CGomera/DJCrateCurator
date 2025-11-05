@@ -60,8 +60,11 @@ interface CrateDao {
 
     @Query("SELECT * FROM crates ORDER BY name")
     suspend fun all(): List<Crate>
-    @Query("SELECT c.*, COUNT(ct.trackId) AS trackCount FROM crates c LEFT JOIN crate_tracks ct ON c.id = ct.crateId GROUP BY c.id ORDER BY c.name")
-
+    @Query(
+        "SELECT c.*, COUNT(ct.trackId) AS trackCount FROM crates c " +
+                "LEFT JOIN crate_tracks ct ON c.id = ct.crateId " +
+                "GROUP BY c.id ORDER BY c.name",
+    )
     suspend fun allWithCounts(): List<CrateWithTrackCount>
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
