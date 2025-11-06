@@ -67,10 +67,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.initializer
-import androidx.lifecycle.viewmodel.viewModelFactory
 import com.david.dcc.data.db.AppDb
 import com.david.dcc.data.model.Crate
 import com.david.dcc.data.model.CrateTrack
@@ -90,7 +88,7 @@ import kotlin.math.abs
 import kotlin.math.absoluteValue
 
 
-class HomeVm(application: Application) : ViewModel() {
+class HomeVm(application: Application) : AndroidViewModel(application) {
     private val db = AppDb.get(application)
     private val importRepo = ImportRepository(application, db)
     private val tagDao = db.tagDao()
@@ -404,11 +402,7 @@ private fun keyCompatibilityScore(preferredKeys: Set<String>, candidateKey: Stri
     val sameNumber = preferredKeys.any { it.startsWith(candidateNumber) }
     return if (sameNumber) 8.0 else 16.0
 }
-    companion object {
-        fun factory(application: Application) = viewModelFactory {
-            initializer { HomeVm(application) }
-        }
-    }
+
 }
 
 private fun normalizeKey(value: String?): String? = value?.trim()?.uppercase()?.takeIf { it.isNotEmpty() }

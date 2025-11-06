@@ -18,9 +18,9 @@ data class Track(
     val energy: Int?,
     val comment: String?,
     val path: String?,
-    @ColumnInfo(defaultValue = "NULL") val durationSeconds: Int? = null,
-    @ColumnInfo(defaultValue = "NULL") val colorHex: String? = null,
-    @ColumnInfo(defaultValue = "NULL") val coverArtUri: String? = null,
+    val durationSeconds: Int? = null,
+    val colorHex: String? = null,
+    val coverArtUri: String? = null,
 )
 
 @Entity(tableName = "crates")

@@ -44,12 +44,7 @@ fun App(
             modifier = Modifier.padding(paddingValues),
         ) {
             composable("home") {
-                val context = LocalContext.current
-                val homeVm: HomeVm = viewModel(
-                    factory = HomeVm.factory(
-                        context.applicationContext as Application,
-                    ),
-                )
+                val homeVm: HomeVm = viewModel()
                 HomeScreen(
                     snackbarHostState = snackbarHostState,
                     launchCsvPicker = launchCsvPicker,
