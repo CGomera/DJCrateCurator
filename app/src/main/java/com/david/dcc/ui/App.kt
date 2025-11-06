@@ -17,6 +17,9 @@ import androidx.navigation.navArgument
 import com.david.dcc.ui.screens.CrateDetailScreen
 
 import com.david.dcc.ui.screens.HomeScreen
+import com.david.dcc.ui.screens.HomeVm
+import androidx.compose.ui.platform.LocalContext
+import android.app.Application
 
 @Composable
 fun App(
@@ -41,6 +44,12 @@ fun App(
             modifier = Modifier.padding(paddingValues),
         ) {
             composable("home") {
+                val context = LocalContext.current
+                val homeVm: HomeVm = viewModel(
+                    factory = HomeVm.factory(
+                        context.applicationContext as Application,
+                    ),
+                )
                 HomeScreen(
                     snackbarHostState = snackbarHostState,
                     launchCsvPicker = launchCsvPicker,
@@ -51,7 +60,7 @@ fun App(
                     registerOnJsonExported = setOnJsonExported,
                     launchSetlistExporter = launchSetlistExporter,
                     registerOnSetlistExported = setOnSetlistExported,
-                    vm = viewModel(),
+                    vm = homeVm,
                 )
             }
 
