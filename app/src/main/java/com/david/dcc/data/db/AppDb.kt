@@ -15,7 +15,7 @@ import com.david.dcc.data.model.*
 
 @Database(
     entities = [Track::class, Crate::class, CrateTrack::class, Setlist::class, SetlistItem::class, Tag::class, TrackTag::class, FilterPreset::class],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class AppDb : RoomDatabase() {
@@ -58,9 +58,16 @@ abstract class AppDb : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE crates ADD COLUMN colorCategory TEXT")
+            }
+        }
+
+
         fun get(context: Context): AppDb = INSTANCE ?: synchronized(this) {
             INSTANCE ?: Room.databaseBuilder(context.applicationContext, AppDb::class.java, "dcc.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .build()
                 .also { INSTANCE = it }
         }

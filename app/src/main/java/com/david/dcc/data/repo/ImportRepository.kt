@@ -9,6 +9,8 @@ import com.david.dcc.data.model.Track
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Locale
+import com.david.dcc.data.model.TechnoStyle
+
 
 class ImportRepository(private val context: Context, private val db: AppDb) {
 
@@ -93,12 +95,19 @@ class ImportRepository(private val context: Context, private val db: AppDb) {
     suspend fun exportCrateToJson(uri: Uri, crateId: Long): Int = withContext(Dispatchers.IO) {
         val crate = db.crateDao().byId(crateId) ?: return@withContext 0
         val tracks = db.crateDao().tracksInCrate(crateId)
+        val style = TechnoStyle.fromId(crate.colorCategory)
 
         val json = buildString {
             append("{\n")
             append("  \"crate\": {\n")
             append("    \"id\": ${crate.id},\n")
             append("    \"name\": ${jsonString(crate.name)},\n")
+            crate.colorCategory?.let {
+                append("    \"style\": ${jsonString(it)},\n")
+            }
+            style?.let {
+                append("    \"styleName\": ${jsonString(it.displayName)},\n")
+            }
             append("    \"tracks\": ${tracks.size}\n")
             append("  },\n")
             append("  \"exports\": {\n")

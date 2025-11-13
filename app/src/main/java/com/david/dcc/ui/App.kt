@@ -18,8 +18,7 @@ import com.david.dcc.ui.screens.CrateDetailScreen
 
 import com.david.dcc.ui.screens.HomeScreen
 import com.david.dcc.ui.screens.HomeVm
-import androidx.compose.ui.platform.LocalContext
-import android.app.Application
+
 
 @Composable
 fun App(
@@ -55,6 +54,7 @@ fun App(
                     registerOnJsonExported = setOnJsonExported,
                     launchSetlistExporter = launchSetlistExporter,
                     registerOnSetlistExported = setOnSetlistExported,
+                    onOpenCrate = { crateId -> nav.navigate("crate/$crateId") },
                     vm = homeVm,
                 )
             }

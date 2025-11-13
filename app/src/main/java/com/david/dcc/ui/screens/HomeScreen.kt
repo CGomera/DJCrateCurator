@@ -1,6 +1,7 @@
 package com.david.dcc.ui.screens
 
 import android.app.Application
+import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -30,6 +31,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.InsertDriveFile
+import androidx.compose.material.icons.filled.LibraryMusic
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
@@ -64,6 +70,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -86,7 +94,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import kotlin.math.absoluteValue
-
+import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.InsertDriveFile
+import androidx.compose.material.icons.filled.LibraryMusic
+import androidx.compose.material.icons.filled.Share
+import com.david.dcc.data.model.TechnoStyle
+import java.util.Locale
 
 class HomeVm(application: Application) : AndroidViewModel(application) {
     private val db = AppDb.get(application)
@@ -150,9 +164,9 @@ class HomeVm(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun createCrate(name: String, onDone: () -> Unit = {}) = viewModelScope.launch {
+    fun createCrate(name: String, style: TechnoStyle, onDone: () -> Unit = {}) = viewModelScope.launch {
         if (name.isBlank()) return@launch
-        db.crateDao().insert(Crate(name = name.trim()))
+        db.crateDao().insert(Crate(name = name.trim(), colorCategory = style.id))
         refreshCratesOnly()
         onDone()
     }
@@ -320,6 +334,32 @@ class HomeVm(application: Application) : AndroidViewModel(application) {
         onDone()
     }
 
+    suspend fun buildCrateShareText(crateId: Long): String? = withContext(Dispatchers.IO) {
+        val crate = db.crateDao().byId(crateId) ?: return@withContext null
+        val tracks = db.crateDao().tracksInCrate(crateId)
+        val category = colorCategoryFor(crate)
+        buildString {
+            appendLine("Crate: ${crate.name}")
+            appendLine("Estilo: ${category.name}")
+            appendLine("Total de pistas: ${tracks.size}")
+            appendLine()
+            tracks.forEachIndexed { index, track ->
+                appendLine("${index + 1}. ${track.artist} - ${track.title}")
+                val details = listOfNotNull(
+                    track.bpm?.let { "${it.toInt()} BPM" },
+                    track.musicalKey?.takeIf { it.isNotBlank() },
+                    track.genre?.takeIf { it.isNotBlank() },
+                )
+                if (details.isNotEmpty()) {
+                    appendLine("   • ${details.joinToString(" · ")}")
+                }
+                track.comment?.takeIf { it.isNotBlank() }?.let { comment ->
+                    appendLine("   • Nota: $comment")
+                }
+            }
+        }
+    }
+
     internal suspend fun assignExistingTag(trackId: Long, tag: Tag): TagOperationResult {
         if (trackTags[trackId].orEmpty().any { it.id == tag.id }) {
             return TagOperationResult.AlreadyAssigned(tag)
@@ -419,10 +459,12 @@ fun HomeScreen(
     registerOnJsonExported: ((Uri) -> Unit) -> Unit,
     launchSetlistExporter: (String) -> Unit,
     registerOnSetlistExported: ((Uri) -> Unit) -> Unit,
+    onOpenCrate: (Long) -> Unit,
     vm: HomeVm,
 ) {
     val snackbarScope = rememberCoroutineScope()
     val snackbarHost by rememberUpdatedState(snackbarHostState)
+    val context = LocalContext.current
 
     val crateSummaries = vm.crateSummaries
     val selectedCrate = vm.selectedCrate
@@ -435,21 +477,15 @@ fun HomeScreen(
     val filteredTracks = vm.filteredTracks()
 
     var newCrateName by remember { mutableStateOf("") }
+    var newCrateCategory by remember { mutableStateOf<TechnoStyle?>(null) }
     var colorFilter by remember { mutableStateOf<CrateColorCategory?>(null) }
     var setlistName by remember { mutableStateOf("Set Ibiza 2025") }
     var expandedSetlistId by remember { mutableStateOf<Long?>(null) }
     var selectedTrackIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
     var tagEditorTarget by remember { mutableStateOf<Track?>(null) }
 
-    LaunchedEffect(registerOnCsvPicked) {
+    fun requestImport(crate: Crate) {
         registerOnCsvPicked { uri ->
-            val crate = vm.selectedCrate
-            if (crate == null) {
-                snackbarScope.launch {
-                    snackbarHost.showSnackbar("Selecciona un crate antes de importar")
-                }
-                return@registerOnCsvPicked
-            }
             vm.importCsv(crate.id, uri) { count ->
                 snackbarScope.launch {
                     val message = if (count == 0) {
@@ -458,8 +494,51 @@ fun HomeScreen(
                         "Se importaron $count pistas en \"${crate.name}\""
                     }
                     snackbarHost.showSnackbar(message)
-
                 }
+            }
+        }
+        launchCsvPicker()
+    }
+
+    fun requestCsvExport(crate: Crate) {
+        registerOnCsvExported { uri ->
+            vm.exportCrateToCsv(crate.id, uri) { count ->
+                snackbarScope.launch {
+                    snackbarHost.showSnackbar("Exportadas $count pistas a CSV")
+                }
+            }
+        }
+        launchCsvExporter("${crate.name}.csv")
+    }
+
+    fun requestJsonExport(crate: Crate) {
+        registerOnJsonExported { uri ->
+            vm.exportCrateToJson(crate.id, uri) { count ->
+                snackbarScope.launch {
+                    snackbarHost.showSnackbar("Exportadas $count pistas en JSON multi-formato")
+                }
+            }
+        }
+        launchJsonExporter("${crate.name}_pro.json")
+    }
+
+    fun shareCrate(crate: Crate) {
+        snackbarScope.launch {
+            val shareText = vm.buildCrateShareText(crate.id)
+            if (shareText.isNullOrBlank()) {
+                snackbarHost.showSnackbar("No se pudo generar la información del crate")
+                return@launch
+            }
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_SUBJECT, "Crate ${crate.name}")
+                putExtra(Intent.EXTRA_TEXT, shareText)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            runCatching {
+                context.startActivity(Intent.createChooser(intent, "Compartir crate"))
+            }.onFailure {
+                snackbarHost.showSnackbar("No se encontró ninguna app para compartir")
 
             }
         }
@@ -474,6 +553,7 @@ fun HomeScreen(
     Column(Modifier.padding(16.dp)) {
         Text("Crates", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(12.dp))
+        val canCreateCrate = newCrateName.isNotBlank() && newCrateCategory != null
         Row(verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(
                 value = newCrateName,
@@ -482,20 +562,51 @@ fun HomeScreen(
                 modifier = Modifier.weight(1f),
             )
             Spacer(Modifier.width(8.dp))
-            Button(onClick = {
-                if (newCrateName.isNotBlank()) {
-                    vm.createCrate(newCrateName) { newCrateName = "" }
-                }
-
-            }) {
+            Button(
+                onClick = {
+                    val style = newCrateCategory ?: return@Button
+                    vm.createCrate(newCrateName, style) {
+                        newCrateName = ""
+                        newCrateCategory = null
+                    }
+                },
+                enabled = canCreateCrate,
+            ) {
                 Text("Crear")
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+        Text("Color y estilo del crate", style = MaterialTheme.typography.labelLarge)
+        Spacer(Modifier.height(8.dp))
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            TechnoStyle.values().forEach { style ->
+                val styleColor = Color(style.colorHex)
+                FilterChip(
+                    selected = newCrateCategory == style,
+                    onClick = {
+                        newCrateCategory = if (newCrateCategory == style) null else style
+                    },
+                    label = { Text(style.displayName) },
+                    leadingIcon = {
+                        Box(
+                            Modifier
+                                .size(12.dp)
+                                .clip(CircleShape)
+                                .background(styleColor),
+                        )
+                    },
+                )
             }
         }
 
         Spacer(Modifier.height(12.dp))
 
         val crateColorCategories = remember(crateSummaries) {
-            crateSummaries.map { colorCategoryFor(it.crate) }.distinctBy { it.name }
+            crateSummaries.map { colorCategoryFor(it.crate) }.distinctBy { it.id ?: it.name }
         }
         if (crateColorCategories.isNotEmpty()) {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -509,7 +620,7 @@ fun HomeScreen(
 
                 items(crateColorCategories) { category ->
                     FilterChip(
-                        selected = colorFilter == category,
+                        selected = colorFilter?.let { it.id == category.id } ?: false,
                         onClick = { colorFilter = category },
                         label = { Text(category.name) },
                         leadingIcon = {
@@ -530,6 +641,7 @@ fun HomeScreen(
             items(crateSummaries.filter { colorFilter?.matches(it.crate) ?: true }) { summary ->
                 val crate = summary.crate
                 val isSelectedCrate = selectedCrate?.id == crate.id
+                val crateCategory = colorCategoryFor(crate)
                 val cardModifier = Modifier
                     .width(240.dp)
                     .heightIn(min = 160.dp)
@@ -563,7 +675,45 @@ fun HomeScreen(
                             Text(crate.name.take(1).uppercase(), color = Color.White, style = MaterialTheme.typography.headlineMedium)
                         }
                         Text(crate.name, style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            crateCategory.name,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = crateCategory.color,
+                        )
                         Text("${summary.trackCount} pistas", style = MaterialTheme.typography.bodySmall)
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            CrateActionChip(
+                                label = "Ver crate",
+                                icon = Icons.Filled.LibraryMusic,
+                                onClick = {
+                                    vm.selectCrate(crate)
+                                    onOpenCrate(crate.id)
+                                },
+                            )
+                            CrateActionChip(
+                                label = "Importar CSV",
+                                icon = Icons.Filled.CloudUpload,
+                                onClick = { requestImport(crate) },
+                            )
+                            CrateActionChip(
+                                label = "Exportar CSV",
+                                icon = Icons.Filled.CloudDownload,
+                                onClick = { requestCsvExport(crate) },
+                            )
+                            CrateActionChip(
+                                label = "Exportar JSON",
+                                icon = Icons.Filled.InsertDriveFile,
+                                onClick = { requestJsonExport(crate) },
+                            )
+                            CrateActionChip(
+                                label = "Compartir",
+                                icon = Icons.Filled.Share,
+                                onClick = { shareCrate(crate) },
+                            )
+                        }
                     }
                 }
             }
@@ -702,37 +852,16 @@ fun HomeScreen(
             Text("Sincronización con Drive", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(onClick = {
-                    registerOnCsvExported { uri ->
-                        vm.exportCrateToCsv(crate.id, uri) { count ->
-                            snackbarScope.launch { snackbarHost.showSnackbar("Exportadas $count pistas a CSV") }
-                        }
-                    }
-                    launchCsvExporter("${crate.name}.csv")
-                }) {
-                    Text("Subir CSV a Drive")
-                }
-                Button(onClick = { launchCsvPicker() }) {
-                    Text("Descargar CSV desde Drive")
-                }
+                Button(onClick = { requestCsvExport(crate) }) { Text("Exportar CSV") }
+                Button(onClick = { requestImport(crate) }) { Text("Importar CSV") }
             }
 
             Spacer(Modifier.height(12.dp))
 
             Text("Integración Rekordbox / Serato / Traktor", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(8.dp))
-            Button(onClick = {
-                registerOnJsonExported { uri ->
-                    vm.exportCrateToJson(crate.id, uri) { count ->
-                        snackbarScope.launch {
-                            snackbarHost.showSnackbar("Exportadas $count pistas en JSON multi-formato")
-                        }
-                    }
-                }
-                launchJsonExporter("${crate.name}_pro.json")
-            }) {
-                Text("Exportar JSON compatible")
-            }
+            Button(onClick = { requestJsonExport(crate) }) { Text("Exportar JSON compatible") }
+
         }
 
         Spacer(Modifier.height(24.dp))
@@ -853,6 +982,21 @@ private fun FilterDropdown(
             }
         }
     }
+}
+
+@Composable
+private fun CrateActionChip(
+    label: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+) {
+    AssistChip(
+        onClick = onClick,
+        label = { Text(label) },
+        leadingIcon = {
+            Icon(imageVector = icon, contentDescription = null)
+        },
+    )
 }
 
 @Composable
@@ -1056,26 +1200,50 @@ private fun RecommendationCard(track: Track, onAdd: () -> Unit) {
     }
 }
 
-data class CrateColorCategory(val name: String, val color: Color) {
-    fun matches(crate: Crate): Boolean = colorCategoryFor(crate).name == name
+data class CrateColorCategory(val id: String?, val name: String, val color: Color) {
+    fun matches(crate: Crate): Boolean {
+        val crateStyle = crate.colorCategory
+        return if (id.isNullOrBlank()) {
+            crateStyle.isNullOrBlank()
+        } else {
+            crateStyle?.equals(id, ignoreCase = true) == true
+        }
+    }
 }
 
-private fun colorForCrate(crate: Crate): Color {
+private fun colorForCrate(crate: Crate): Color =
+    TechnoStyle.fromId(crate.colorCategory)?.let { Color(it.colorHex) } ?: autoColorForCrate(crate)
+
+private fun colorCategoryFor(crate: Crate): CrateColorCategory {
+    val style = TechnoStyle.fromId(crate.colorCategory)
+    return when {
+        style != null -> CrateColorCategory(style.id, style.displayName, Color(style.colorHex))
+        !crate.colorCategory.isNullOrBlank() -> {
+            val customName = formatStyleName(crate.colorCategory)
+            CrateColorCategory(crate.colorCategory, customName, autoColorForCrate(crate))
+        }
+        else -> CrateColorCategory(null, "Sin estilo", autoColorForCrate(crate))
+    }
+}
+
+private fun autoColorForCrate(crate: Crate): Color {
     val hue = (crate.name.hashCode().absoluteValue % 360).toFloat()
     return Color.hsl(hue, 0.5f, 0.45f)
 }
 
-private fun colorCategoryFor(crate: Crate): CrateColorCategory {
-    val hue = crate.name.hashCode().absoluteValue % 360
-    val category = when (hue) {
-        in 0..45, in 315..360 -> "Rojo"
-        in 46..90 -> "Naranja"
-        in 91..150 -> "Amarillo"
-        in 151..210 -> "Verde"
-        in 211..270 -> "Azul"
-        else -> "Morado"
+private fun formatStyleName(raw: String): String {
+    val parts = raw
+        .lowercase(Locale.getDefault())
+        .split('-', '_')
+        .filter { it.isNotBlank() }
+    if (parts.isEmpty()) {
+        return raw
     }
-    return CrateColorCategory(category, colorForCrate(crate))
+    return parts.joinToString(" ") { part ->
+        part.replaceFirstChar { ch ->
+            if (ch.isLowerCase()) ch.titlecase(Locale.getDefault()) else ch.toString()
+        }
+    }
 }
 
 private fun colorForTrack(track: Track): Color {

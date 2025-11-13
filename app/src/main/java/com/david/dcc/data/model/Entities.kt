@@ -27,7 +27,9 @@ data class Track(
 data class Crate(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
-)
+    val colorCategory: String? = null,
+
+    )
 
 @Entity(
     tableName = "crate_tracks",

@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.withTransaction
 import com.david.dcc.data.db.AppDb
 import com.david.dcc.data.model.CrateTrack
+import com.david.dcc.data.model.TechnoStyle
 import com.david.dcc.data.model.Track
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -32,6 +33,10 @@ class DriveSyncRepository(private val context: Context, private val db: AppDb) {
             val payload = JSONObject().apply {
                 put("crateId", crate.id)
                 put("crateName", crate.name)
+                putOpt("crateStyle", crate.colorCategory)
+                TechnoStyle.fromId(crate.colorCategory)?.let { style ->
+                    put("crateStyleName", style.displayName)
+                }
                 put("generatedAt", System.currentTimeMillis())
                 put("tracks", JSONArray().apply {
                     tracks.forEach { track ->
