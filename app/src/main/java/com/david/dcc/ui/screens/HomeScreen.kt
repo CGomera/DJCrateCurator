@@ -101,6 +101,9 @@ import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Share
 import com.david.dcc.data.model.TechnoStyle
 import java.util.Locale
+import com.david.dcc.data.model.SetlistExportFormat
+
+
 
 class HomeVm(application: Application) : AndroidViewModel(application) {
     private val db = AppDb.get(application)
@@ -293,12 +296,18 @@ class HomeVm(application: Application) : AndroidViewModel(application) {
         onDone(count)
     }
 
-    fun exportSetlistToRekordbox(setlistId: Long, uri: Uri, onDone: (Int) -> Unit) = viewModelScope.launch {
+    fun exportSetlist(
+        setlistId: Long,
+        format: SetlistExportFormat,
+        uri: Uri,
+        onDone: (Int) -> Unit,
+    ) = viewModelScope.launch {
         loading = true
-        val count = importRepo.exportSetlistToRekordboxCsv(setlistId, uri)
+        val count = importRepo.exportSetlistToCsv(setlistId, uri, format)
         loading = false
         onDone(count)
     }
+
 
     fun createSetlist(name: String, tracks: List<Track>, onDone: () -> Unit) = viewModelScope.launch {
         if (name.isBlank() || tracks.isEmpty()) return@launch
@@ -878,17 +887,28 @@ fun HomeScreen(
                         Text(summary.setlist.name, style = MaterialTheme.typography.titleMedium)
                         Text("${summary.trackCount} pistas", style = MaterialTheme.typography.bodySmall)
                         Spacer(Modifier.height(8.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            AssistChip(onClick = {
-                                registerOnSetlistExported { uri ->
-                                    vm.exportSetlistToRekordbox(summary.setlist.id, uri) { count ->
-                                        snackbarScope.launch {
-                                            snackbarHost.showSnackbar("Exportadas $count pistas del setlist a CSV Rekordbox")
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            SetlistExportFormat.values().forEach { format ->
+                                AssistChip(
+                                    onClick = {
+                                        registerOnSetlistExported { uri ->
+                                            vm.exportSetlist(summary.setlist.id, format, uri) { count ->
+                                                snackbarScope.launch {
+                                                    snackbarHost.showSnackbar(
+                                                        "Exportadas $count pistas del setlist a CSV ${format.displayName}",
+                                                    )
+                                                }
+                                            }
                                         }
-                                    }
-                                }
-                                launchSetlistExporter("${summary.setlist.name}_rekordbox.csv")
-                            }, label = { Text("Exportar Rekordbox") })
+
+                        launchSetlistExporter("${summary.setlist.name}_${format.fileSuffix}.csv")
+                    },
+                    label = { Text("Exportar ${format.displayName}") },
+                    )
+                }
                             AssistChip(onClick = { expandedSetlistId = null }, label = { Text("Cerrar detalle") })
                         }
 

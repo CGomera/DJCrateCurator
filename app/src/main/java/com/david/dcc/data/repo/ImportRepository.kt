@@ -10,6 +10,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Locale
 import com.david.dcc.data.model.TechnoStyle
+import com.david.dcc.data.model.SetlistExportFormat
+
 
 
 class ImportRepository(private val context: Context, private val db: AppDb) {
@@ -125,26 +127,29 @@ class ImportRepository(private val context: Context, private val db: AppDb) {
         tracks.size
     }
 
-    suspend fun exportSetlistToRekordboxCsv(setlistId: Long, uri: Uri): Int = withContext(Dispatchers.IO) {
+    suspend fun exportSetlistToCsv(
+        setlistId: Long,
+        uri: Uri,
+        format: SetlistExportFormat,
+    ): Int = withContext(Dispatchers.IO) {
         val setlist = db.setlistDao().byId(setlistId) ?: return@withContext 0
         val entries = db.setlistDao().tracksForSetlist(setlist.id)
         var exported = 0
 
         context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { writer ->
-            writer.write("Position,Title,Artist,BPM,Key,Comment")
+            writer.write(encodeCsvRow(format.headers()))
             writer.newLine()
             entries.forEach { entry ->
                 val track = entry.track ?: return@forEach
-                val row = encodeCsvRow(
-                    listOf(
-                        (entry.position + 1).toString(),
-                        track.title,
-                        track.artist,
-                        track.bpm?.let { String.format(Locale.US, "%.2f", it) } ?: "",
-                        track.musicalKey.orEmpty(),
-                        track.comment.orEmpty(),
-                    ),
+                val exportable = SetlistExportFormat.ExportableTrack(
+                    title = track.title,
+                    artist = track.artist,
+                    bpm = track.bpm,
+                    key = track.musicalKey,
+                    comment = track.comment,
                 )
+                val row = encodeCsvRow(format.rowFor(entry.position, exportable))
+
                 writer.write(row)
                 writer.newLine()
                 exported++
@@ -154,84 +159,83 @@ class ImportRepository(private val context: Context, private val db: AppDb) {
             exported
         }
 
-            private fun parseCsvLine(line: String, separator: Char): List<String> {
-                if (line.isEmpty()) return emptyList()
-                val values = mutableListOf<String>()
-                val current = StringBuilder()
-                var inQuotes = false
-                var index = 0
-                while (index < line.length) {
-                    when (val ch = line[index]) {
-                        '"' -> {
-                            if (inQuotes && index + 1 < line.length && line[index + 1] == '"') {
-                                current.append('"')
-                                index++
-                            } else {
-                                inQuotes = !inQuotes
-                            }
-
-                        }
-                            separator -> {
-                            if (inQuotes) {
-                                current.append(ch)
-                            } else {
-                                values += current.toString()
-                                current.clear()
-                            }
-
-                        }
-
-                        else -> current.append(ch)
-                    }
+    private fun parseCsvLine(line: String, separator: Char): List<String> {
+        if (line.isEmpty()) return emptyList()
+        val values = mutableListOf<String>()
+        val current = StringBuilder()
+        var inQuotes = false
+        var index = 0
+        while (index < line.length) {
+            when (val ch = line[index]) {
+                '"' -> {
+                    if (inQuotes && index + 1 < line.length && line[index + 1] == '"') {
+                        current.append('"')
                         index++
-                    }
-                    values += current.toString()
-                    return values
-                }
-
-                private fun encodeCsvRow(values: List<String>): String = values.joinToString(",") { value ->
-                    if (value.contains(',') || value.contains('"') || value.contains('\n')) {
-                        val escaped = value.replace("\"", "\"\"")
-                        "\"$escaped\""
                     } else {
-                        value
+                        inQuotes = !inQuotes
+                    }
+
+                }
+
+                separator -> {
+                    if (inQuotes) {
+                        current.append(ch)
+                    } else {
+                        values += current.toString()
+                        current.clear()
                     }
                 }
 
-                private fun buildTrackArrayJson(tracks: List<Track>, format: ExportFormat): String {
-                    if (tracks.isEmpty()) return "[]"
-                    val builder = StringBuilder()
-                    builder.append('[')
-                    tracks.forEachIndexed { index, track ->
-                        if (index > 0) builder.append(',')
-                        builder.append('{')
-                        builder.append("\"title\": ${jsonString(track.title)}")
-                        builder.append(",\"artist\": ${jsonString(track.artist)}")
-                        track.bpm?.let { builder.append(",\"bpm\": ${String.format(Locale.US, "%.2f", it)}") }
-                        track.genre?.let { builder.append(",\"genre\": ${jsonString(it)}") }
-                        track.musicalKey?.let { builder.append(",\"key\": ${jsonString(it)}") }
-                        track.comment?.let { builder.append(",\"comment\": ${jsonString(it)}") }
-                        track.path?.let { builder.append(",\"path\": ${jsonString(it)}") }
-                        when (format) {
-                            ExportFormat.REKORDBOX -> track.rating?.let { builder.append(",\"rating\": $it") }
-                            ExportFormat.SERATO -> track.energy?.let { builder.append(",\"energy\": $it") }
-                            ExportFormat.TRAKTOR -> track.comment?.let { builder.append(",\"cue\": ${jsonString(it)}") }
-                        }
-                        builder.append('}')
-                    }
-                    builder.append(']')
-                    return builder.toString()
-                }
-
-                private fun jsonString(value: String): String {
-                    val escaped = value
-                        .replace("\\", "\\\\")
-                        .replace("\"", "\\\"")
-                        .replace("\n", "\\n")
-                        .replace("\r", "\\r")
-                        .replace("\t", "\\t")
-                    return "\"$escaped\""
-                }
-
-                private enum class ExportFormat { REKORDBOX, SERATO, TRAKTOR }
+                else -> current.append(ch)
             }
+            index++
+        }
+        values += current.toString()
+        return values
+    }
+
+    private fun encodeCsvRow(values: List<String>): String = values.joinToString(",") { value ->
+        if (value.contains(',') || value.contains('"') || value.contains('\n')) {
+            val escaped = value.replace("\"", "\"\"")
+            "\"$escaped\""
+        } else {
+            value
+        }
+    }
+
+    private fun buildTrackArrayJson(tracks: List<Track>, format: ExportFormat): String {
+        if (tracks.isEmpty()) return "[]"
+        val builder = StringBuilder()
+        builder.append('[')
+        tracks.forEachIndexed { index, track ->
+            if (index > 0) builder.append(',')
+            builder.append('{')
+            builder.append("\"title\": ${jsonString(track.title)}")
+            builder.append(",\"artist\": ${jsonString(track.artist)}")
+            track.bpm?.let { builder.append(",\"bpm\": ${String.format(Locale.US, "%.2f", it)}") }
+            track.genre?.let { builder.append(",\"genre\": ${jsonString(it)}") }
+            track.musicalKey?.let { builder.append(",\"key\": ${jsonString(it)}") }
+            track.comment?.let { builder.append(",\"comment\": ${jsonString(it)}") }
+            track.path?.let { builder.append(",\"path\": ${jsonString(it)}") }
+            when (format) {
+                ExportFormat.REKORDBOX -> track.rating?.let { builder.append(",\"rating\": $it") }
+                ExportFormat.SERATO -> track.energy?.let { builder.append(",\"energy\": $it") }
+                ExportFormat.TRAKTOR -> track.comment?.let { builder.append(",\"cue\": ${jsonString(it)}") }
+            }
+            builder.append('}')
+        }
+        builder.append(']')
+        return builder.toString()
+    }
+
+    private fun jsonString(value: String): String {
+        val escaped = value
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            .replace("\n", "\\n")
+            .replace("\r", "\\r")
+            .replace("\t", "\\t")
+        return "\"$escaped\""
+    }
+        private enum class ExportFormat { REKORDBOX, SERATO, TRAKTOR }
+    }
