@@ -690,10 +690,8 @@ fun HomeScreen(
                             color = crateCategory.color,
                         )
                         Text("${summary.trackCount} pistas", style = MaterialTheme.typography.bodySmall)
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+
                             CrateActionChip(
                                 label = "Ver crate",
                                 icon = Icons.Filled.LibraryMusic,
