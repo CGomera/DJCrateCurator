@@ -702,16 +702,18 @@ fun HomeScreen(
                                     onOpenCrate(crate.id)
                                 },
                             )
-                            CrateActionChip(
-                                label = "Importar CSV",
-                                icon = Icons.Filled.CloudUpload,
-                                onClick = { requestImport(crate) },
-                            )
-                            CrateActionChip(
-                                label = "Exportar CSV",
-                                icon = Icons.Filled.CloudDownload,
-                                onClick = { requestCsvExport(crate) },
-                            )
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                CrateActionChip(
+                                    label = "Importar CSV",
+                                    icon = Icons.Filled.CloudUpload,
+                                    onClick = { requestImport(crate) },
+                                )
+                                CrateActionChip(
+                                    label = "Exportar CSV",
+                                    icon = Icons.Filled.CloudDownload,
+                                    onClick = { requestCsvExport(crate) },
+                                )
+                            }
                             CrateActionChip(
                                 label = "Exportar JSON",
                                 icon = Icons.Filled.InsertDriveFile,
