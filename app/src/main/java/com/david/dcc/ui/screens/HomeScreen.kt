@@ -702,25 +702,23 @@ fun HomeScreen(
                                     onOpenCrate(crate.id)
                                 },
                             )
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                CrateActionChip(
-                                    label = "Importar CSV",
-                                    icon = Icons.Filled.CloudUpload,
-                                    onClick = { requestImport(crate) },
-                                )
-                                CrateActionChip(
-                                    label = "Exportar CSV",
-                                    icon = Icons.Filled.CloudDownload,
-                                    onClick = { requestCsvExport(crate) },
-                                )
-                            }
                             CrateActionChip(
-                                label = "Exportar JSON",
+                                label = "Importar CSV",
+                                icon = Icons.Filled.CloudUpload,
+                                onClick = { requestImport(crate) },
+                            )
+                            CrateActionChip(
+                                label = "Exportar CSV",
+                                icon = Icons.Filled.CloudDownload,
+                                onClick = { requestCsvExport(crate) },
+                            )
+                            CrateActionChip(
+                                label = "Exportar crate",
                                 icon = Icons.Filled.InsertDriveFile,
                                 onClick = { requestJsonExport(crate) },
                             )
                             CrateActionChip(
-                                label = "Compartir",
+                                label = "Compartir crate",
                                 icon = Icons.Filled.Share,
                                 onClick = { shareCrate(crate) },
                             )
@@ -729,7 +727,6 @@ fun HomeScreen(
                 }
             }
         }
-
         Spacer(Modifier.height(16.dp))
 
         selectedCrate?.let { crate ->
