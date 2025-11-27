@@ -67,6 +67,11 @@ fun App(
                 CrateDetailScreen(
                     crateId = crateId,
                     onNavigateUp = { nav.popBackStack() },
+                    snackbarHostState = snackbarHostState,
+                    launchCsvExporter = launchCsvExporter,
+                    registerOnCsvExported = setOnCsvExported,
+                    launchJsonExporter = launchJsonExporter,
+                    registerOnJsonExported = setOnJsonExported,
                 )
             }
         }
