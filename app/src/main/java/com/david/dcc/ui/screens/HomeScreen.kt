@@ -33,6 +33,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Share
@@ -51,7 +53,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RangeSlider
@@ -94,11 +95,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import kotlin.math.absoluteValue
-import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.CloudUpload
-import androidx.compose.material.icons.filled.InsertDriveFile
-import androidx.compose.material.icons.filled.LibraryMusic
-import androidx.compose.material.icons.filled.Share
 import com.david.dcc.data.model.TechnoStyle
 import java.util.Locale
 import com.david.dcc.data.model.SetlistExportFormat
@@ -165,6 +161,31 @@ class HomeVm(application: Application) : AndroidViewModel(application) {
         selectedCrate?.let { current ->
             crateSummaries.firstOrNull { it.crate.id == current.id }?.crate?.let { selectCrate(it) }
         }
+    }
+    fun updateCrate(crateId: Long, name: String, style: TechnoStyle, onDone: () -> Unit = {}) = viewModelScope.launch {
+        val existing = db.crateDao().byId(crateId) ?: return@launch
+        val trimmedName = name.trim().takeIf { it.isNotEmpty() } ?: return@launch
+        val updated = existing.copy(name = trimmedName, colorCategory = style.id)
+        db.crateDao().update(updated)
+        refreshCratesOnly()
+        selectedCrate?.let { current ->
+            if (current.id == crateId) {
+                selectCrate(updated)
+            }
+        }
+        onDone()
+    }
+
+    fun deleteCrate(crate: Crate, onDone: () -> Unit = {}) = viewModelScope.launch {
+        db.crateDao().delete(crate)
+        if (selectedCrate?.id == crate.id) {
+            selectedCrate = null
+            crateTracks = emptyList()
+            recommendedTracks = emptyList()
+            clearFilters()
+        }
+        refreshCratesOnly()
+        onDone()
     }
 
     fun createCrate(name: String, style: TechnoStyle, onDone: () -> Unit = {}) = viewModelScope.launch {
@@ -488,6 +509,10 @@ fun HomeScreen(
     var newCrateName by remember { mutableStateOf("") }
     var newCrateCategory by remember { mutableStateOf<TechnoStyle?>(null) }
     var colorFilter by remember { mutableStateOf<CrateColorCategory?>(null) }
+    var crateToEdit by remember { mutableStateOf<Crate?>(null) }
+    var crateToDelete by remember { mutableStateOf<Crate?>(null) }
+    var editCrateName by remember { mutableStateOf("") }
+    var editCrateCategory by remember { mutableStateOf<TechnoStyle?>(null) }
     var setlistName by remember { mutableStateOf("Set Ibiza 2025") }
     var expandedSetlistId by remember { mutableStateOf<Long?>(null) }
     var selectedTrackIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
@@ -716,6 +741,21 @@ fun HomeScreen(
                                 onClick = { requestJsonExport(crate) },
                             )
                             CrateActionChip(
+                                label = "Editar crate",
+                                icon = Icons.Filled.Edit,
+                                onClick = {
+                                    crateToEdit = crate
+                                    editCrateName = crate.name
+                                    editCrateCategory = TechnoStyle.fromId(crate.colorCategory)
+                                        ?: TechnoStyle.TECHNO_HOUSE
+                                },
+                            )
+                            CrateActionChip(
+                                label = "Borrar crate",
+                                icon = Icons.Filled.Delete,
+                                onClick = { crateToDelete = crate },
+                            )
+                            CrateActionChip(
                                 label = "Compartir crate",
                                 icon = Icons.Filled.Share,
                                 onClick = { shareCrate(crate) },
@@ -741,7 +781,7 @@ fun HomeScreen(
                 Button(onClick = { vm.clearFilters() }) { Text("Limpiar filtros") }
             }
             Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            /**Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 FilterDropdown(
                     value = vm.genreFilter,
                     options = vm.availableGenres,
@@ -760,7 +800,7 @@ fun HomeScreen(
                     label = "Tonalidad",
                     onSelected = { vm.keyFilter = it },
                 )
-            }
+            }**/
 
             vm.bpmBounds?.let { bounds ->
                 Spacer(Modifier.height(8.dp))
@@ -947,6 +987,84 @@ fun HomeScreen(
             }
         }
 
+        crateToEdit?.let { crate ->
+            AlertDialog(
+                onDismissRequest = { crateToEdit = null },
+                title = { Text("Editar crate") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedTextField(
+                            value = editCrateName,
+                            onValueChange = { editCrateName = it },
+                            label = { Text("Nombre del crate") },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Color y estilo del crate", style = MaterialTheme.typography.labelLarge)
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                TechnoStyle.values().forEach { style ->
+                                    val styleColor = Color(style.colorHex)
+                                    FilterChip(
+                                        selected = editCrateCategory == style,
+                                        onClick = { editCrateCategory = style },
+                                        label = { Text(style.displayName) },
+                                        leadingIcon = {
+                                            Box(
+                                                Modifier
+                                                    .size(12.dp)
+                                                    .clip(CircleShape)
+                                                    .background(styleColor),
+                                            )
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        val style = editCrateCategory ?: return@TextButton
+                        vm.updateCrate(crate.id, editCrateName, style) {
+                            crateToEdit = null
+                            snackbarScope.launch { snackbarHost.showSnackbar("Crate actualizado") }
+                        }
+                    }) {
+                        Text("Guardar")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { crateToEdit = null }) { Text("Cancelar") }
+                },
+            )
+        }
+
+        crateToDelete?.let { crate ->
+            AlertDialog(
+                onDismissRequest = { crateToDelete = null },
+                title = { Text("Eliminar crate") },
+                text = {
+                    Text("Se eliminará el crate \"${crate.name}\" y sus asignaciones de pistas.")
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        vm.deleteCrate(crate) {
+                            crateToDelete = null
+                            snackbarScope.launch { snackbarHost.showSnackbar("Crate eliminado") }
+                        }
+                    }) {
+                        Text("Eliminar")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { crateToDelete = null }) { Text("Cancelar") }
+                },
+            )
+        }
+
         tagEditorTarget?.let { track ->
             val assignedTags = trackTags[track.id].orEmpty()
             val availableTags = allTags.filter { tag -> assignedTags.none { it.id == tag.id } }
@@ -963,12 +1081,11 @@ fun HomeScreen(
 
         if (loading) {
             Spacer(Modifier.height(16.dp))
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FilterDropdown(
     value: String?,
@@ -999,7 +1116,7 @@ private fun FilterDropdown(
             }
         }
     }
-}
+}**/
 
 @Composable
 private fun CrateActionChip(

@@ -54,7 +54,8 @@ interface TrackDao {
 interface CrateDao {
     @Insert
     suspend fun insert(crate: Crate): Long
-
+    @Update
+    suspend fun update(crate: Crate)
     @Delete
     suspend fun delete(crate: Crate)
 
