@@ -43,7 +43,8 @@ import kotlinx.coroutines.launch
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Share
@@ -85,7 +86,7 @@ class CrateDetailVm(app: Application, private val crateId: Long) : AndroidViewMo
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun CrateDetailScreen(
     crateId: Long,
@@ -168,8 +169,11 @@ fun CrateDetailScreen(
                 Spacer(Modifier.size(12.dp))
                 Text("Acciones del crate", style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.size(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    AssistChip(
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                     AssistChip(
                         onClick = { requestCsvExport(crate) },
                         label = { Text("Exportar CSV") },
                         leadingIcon = { Icon(Icons.Filled.CloudDownload, contentDescription = null) },
