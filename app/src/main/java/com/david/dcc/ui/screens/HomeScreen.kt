@@ -31,6 +31,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Close
@@ -488,6 +489,14 @@ class HomeVm(application: Application) : AndroidViewModel(application) {
 
 private fun normalizeKey(value: String?): String? = value?.trim()?.uppercase()?.takeIf { it.isNotEmpty() }
 
+private enum class HomePage(val title: String) {
+    Menu("Inicio"),
+    CreateCrate("Crear un nuevo crate"),
+    ViewCrates("Ver mis crates"),
+    CreateSetlist("Crear setlist"),
+    ViewSetlists("Ver mis setlists"),
+}
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
 fun HomeScreen(
@@ -528,6 +537,7 @@ fun HomeScreen(
     var setlistName by remember { mutableStateOf("Set Ibiza 2025") }
     var globalSetlistName by remember { mutableStateOf("Set Global 2025") }
     var expandedSetlistId by remember { mutableStateOf<Long?>(null) }
+    var currentPage by remember { mutableStateOf(HomePage.Menu) }
     val selectedTrackIds = remember { mutableStateListOf<Long>() }
     val globalSelectedTrackIds = remember { mutableStateListOf<Long>() }
     var tagEditorTarget by remember { mutableStateOf<Track?>(null) }
@@ -612,511 +622,629 @@ fun HomeScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item {
-            HomeHeroSection(
-                crateCount = crateSummaries.size,
-                setlistCount = setlists.size,
-                selectedCrateName = selectedCrate?.name,
-                onImport = selectedCrate?.let { { requestImport(it) } },
-                onExport = selectedCrate?.let { { requestCsvExport(it) } },
-            )
-        }
-
-        item {
-            SectionCard(
-                title = "Crea un nuevo crate",
-                description = "Define nombre y estilo para preparar tus mezclas.",
-            ) {
-                val canCreateCrate = newCrateName.isNotBlank() && newCrateCategory != null
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(
-                        value = newCrateName,
-                        onValueChange = { newCrateName = it },
-                        label = { Text("Nombre del crate") },
-                        modifier = Modifier.weight(1f),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            val style = newCrateCategory ?: return@Button
-                            vm.createCrate(newCrateName, style) {
-                                newCrateName = ""
-                                newCrateCategory = null
-                            }
-                        },
-                        enabled = canCreateCrate,
-                    ) {
-                        Text("Crear")
-                    }
-                }
-
-                Spacer(Modifier.height(8.dp))
-                Text("Color y estilo del crate", style = MaterialTheme.typography.labelLarge)
-                Spacer(Modifier.height(8.dp))
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    TechnoStyle.values().forEach { style ->
-                        val styleColor = Color(style.colorHex)
-                        FilterChip(
-                            selected = newCrateCategory == style,
-                            onClick = {
-                                newCrateCategory = if (newCrateCategory == style) null else style
-                            },
-                            label = { Text(style.displayName) },
-                            leadingIcon = {
-                                Box(
-                                    Modifier
-                                        .size(12.dp)
-                                        .clip(CircleShape)
-                                        .background(styleColor),
-                                )
-                            },
-                        )
-                    }
-                }
+            if (currentPage == HomePage.Menu) {
+                HomeHeroSection(
+                    crateCount = crateSummaries.size,
+                    setlistCount = setlists.size,
+                    selectedCrateName = selectedCrate?.name,
+                    onImport = selectedCrate?.let { { requestImport(it) } },
+                    onExport = selectedCrate?.let { { requestCsvExport(it) } },
+                )
+            } else {
+                PageHeader(
+                    title = currentPage.title,
+                    onBack = { currentPage = HomePage.Menu },
+                )
             }
         }
 
-        item {
-            SectionCard(
-                title = "Tus crates",
-                description = "Filtra por color y accede rápido a cada crate.",
-            ) {
-                val crateColorCategories = remember(crateSummaries) {
-                    crateSummaries.map { colorCategoryFor(it.crate) }.distinctBy { it.id ?: it.name }
+        when (currentPage) {
+            HomePage.Menu -> {
+                item {
+                    HomeNavigationMenu(
+                        onNavigate = { destination -> currentPage = destination },
+                    )
                 }
-                if (crateColorCategories.isNotEmpty()) {
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        item {
-                            FilterChip(
-                                selected = colorFilter == null,
-                                onClick = { colorFilter = null },
-                                label = { Text("Todos") },
+            }
+            HomePage.CreateCrate -> {
+                item {
+                    SectionCard(
+                        title = "Crea un nuevo crate",
+                        description = "Define nombre y estilo para preparar tus mezclas.",
+                    ) {
+                        val canCreateCrate = newCrateName.isNotBlank() && newCrateCategory != null
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            OutlinedTextField(
+                                value = newCrateName,
+                                onValueChange = { newCrateName = it },
+                                label = { Text("Nombre del crate") },
+                                modifier = Modifier.weight(1f),
                             )
+                            Spacer(Modifier.width(8.dp))
+                            Button(
+                                onClick = {
+                                    val style = newCrateCategory ?: return@Button
+                                    vm.createCrate(newCrateName, style) {
+                                        newCrateName = ""
+                                        newCrateCategory = null
+                                    }
+                                },
+                                enabled = canCreateCrate,
+                            ) {
+                                Text("Crear")
+                            }
                         }
 
-                        items(crateColorCategories) { category ->
-                            FilterChip(
-                                selected = colorFilter?.let { it.id == category.id } ?: false,
-                                onClick = { colorFilter = category },
-                                label = { Text(category.name) },
-                                leadingIcon = {
-                                    Box(
-                                        Modifier
-                                            .size(12.dp)
-                                            .clip(CircleShape)
-                                            .background(category.color),
-                                    )
-                                },
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(12.dp))
-                }
-
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(crateSummaries.filter { colorFilter?.matches(it.crate) ?: true }) { summary ->
-                        val crate = summary.crate
-                        val isSelectedCrate = selectedCrate?.id == crate.id
-                        val crateCategory = colorCategoryFor(crate)
-                        val cardModifier = Modifier
-                            .width(240.dp)
-                            .heightIn(min = 160.dp)
-                            .then(
-                                if (isSelectedCrate) {
-                                    Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
-                                } else {
-                                    Modifier
-                                },
-                            )
-                        ElevatedCard(
-                            modifier = cardModifier,
-                            onClick = { vm.selectCrate(crate) },
-                            shape = RoundedCornerShape(12.dp),
-                            colors = CardDefaults.elevatedCardColors(),
+                        Spacer(Modifier.height(8.dp))
+                        Text("Color y estilo del crate", style = MaterialTheme.typography.labelLarge)
+                        Spacer(Modifier.height(8.dp))
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            Column(
-                                Modifier
-                                    .fillMaxSize()
-                                    .padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp),
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .height(60.dp)
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(colorForCrate(crate)),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Text(crate.name.take(1).uppercase(), color = Color.White, style = MaterialTheme.typography.headlineMedium)
-                                }
-                                Text(crate.name, style = MaterialTheme.typography.titleMedium)
-                                Text(
-                                    crateCategory.name,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = crateCategory.color,
-                                )
-                                Text("${summary.trackCount} pistas", style = MaterialTheme.typography.bodySmall)
-                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    CrateActionChip(
-                                        label = "Ver crate",
-                                        icon = Icons.Filled.LibraryMusic,
-                                        onClick = {
-                                            vm.selectCrate(crate)
-                                            onOpenCrate(crate.id)
-                                        },
-                                    )
-                                    CrateActionChip(
-                                        label = "Importar CSV",
-                                        icon = Icons.Filled.CloudUpload,
-                                        onClick = { requestImport(crate) },
-                                    )
-                                    CrateActionChip(
-                                        label = "Exportar CSV",
-                                        icon = Icons.Filled.CloudDownload,
-                                        onClick = { requestCsvExport(crate) },
-                                    )
-                                    CrateActionChip(
-                                        label = "Exportar crate",
-                                        icon = Icons.Filled.InsertDriveFile,
-                                        onClick = { requestJsonExport(crate) },
-                                    )
-                                    CrateActionChip(
-                                        label = "Editar crate",
-                                        icon = Icons.Filled.Edit,
-                                        onClick = {
-                                            crateToEdit = crate
-                                            editCrateName = crate.name
-                                            editCrateCategory = TechnoStyle.fromId(crate.colorCategory)
-                                                ?: TechnoStyle.TECHNO_HOUSE
-                                        },
-                                    )
-                                    CrateActionChip(
-                                        label = "Borrar crate",
-                                        icon = Icons.Filled.Delete,
-                                        onClick = { crateToDelete = crate },
-                                    )
-                                    CrateActionChip(
-                                        label = "Compartir crate",
-                                        icon = Icons.Filled.Share,
-                                        onClick = { shareCrate(crate) },
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        selectedCrate?.let { crate ->
-            item {
-                SectionCard(
-                    title = "Tracks en ${crate.name}",
-                    description = "Filtra, etiqueta y prepara setlists sin perderte.",
-                ) {
-                    if (loading) {
-                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                        Spacer(Modifier.height(8.dp))
-                    }
-
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        OutlinedTextField(
-                            value = vm.searchQuery,
-                            onValueChange = { vm.searchQuery = it },
-                            label = { Text("Buscar") },
-                            modifier = Modifier.weight(1f),
-                        )
-                        Button(onClick = { vm.clearFilters() }) { Text("Limpiar filtros") }
-                    }
-                    Spacer(Modifier.height(8.dp))
-
-                    vm.bpmBounds?.let { bounds ->
-                        Spacer(Modifier.height(8.dp))
-                        Text("Rango BPM", style = MaterialTheme.typography.labelMedium)
-                        RangeSlider(
-                            value = vm.bpmRange ?: bounds,
-                            onValueChange = { vm.bpmRange = it },
-                            valueRange = bounds,
-                        )
-                    }
-
-                    Spacer(Modifier.height(12.dp))
-
-                    LazyVerticalGrid(
-                        columns = GridCells.Adaptive(280.dp),
-                        modifier = Modifier.heightIn(min = 120.dp).fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        items(filteredTracks, key = { it.id }) { track ->
-                            val tags = trackTags[track.id].orEmpty()
-
-                            TrackCard(
-                                track = track,
-                                tags = tags,
-                                selected = track.id in selectedTrackIds,
-                                onSelectedChange = { isSelected ->
-                                    if (isSelected) {
-                                        if (track.id !in selectedTrackIds) {
-                                            selectedTrackIds.add(track.id)
-                                        }
-                                    } else {
-                                        selectedTrackIds.remove(track.id)
-                                    }
-                                },
-                                onRemoveTag = { tag ->
-                                    snackbarScope.launch {
-                                        if (vm.removeTagFromTrack(track.id, tag)) {
-                                            snackbarHost.showSnackbar("Etiqueta \"${tag.name}\" eliminada de ${track.title}")
-                                        }
-                                    }
-                                },
-                                onEditTags = { tagEditorTarget = track },
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(16.dp))
-
-                    Text("Modo setlist", style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.height(8.dp))
-                    SelectedTrackList(
-                        title = "Orden del setlist",
-                        tracks = selectedTrackIds.mapNotNull { trackId -> filteredTracks.find { it.id == trackId } },
-                        onMoveUp = { index -> moveTrack(selectedTrackIds, index, index - 1) },
-                        onMoveDown = { index -> moveTrack(selectedTrackIds, index, index + 1) },
-                        onRemove = { trackId -> selectedTrackIds.remove(trackId) },
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = setlistName,
-                        onValueChange = { setlistName = it },
-                        label = { Text("Nombre del setlist") },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Button(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp),
-                        onClick = {
-                            val trackLookup = filteredTracks.associateBy { it.id }
-                            val tracks = selectedTrackIds.mapNotNull { trackLookup[it] }
-                            if (tracks.isEmpty()) {
-                                snackbarScope.launch { snackbarHost.showSnackbar("Selecciona pistas para el setlist") }
-                                return@Button
-                            }
-                            vm.createSetlist(setlistName.trim(), tracks) {
-                                snackbarScope.launch {
-                                    snackbarHost.showSnackbar("Setlist \"$setlistName\" guardado (${tracks.size} pistas)")
-                                    selectedTrackIds.clear()
-                                }
-                            }
-                        },
-                    ) {
-                        Text("Crear setlist")
-                    }
-                    Spacer(Modifier.height(16.dp))
-
-                    Text("Recomendaciones inteligentes", style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.height(8.dp))
-                    if (vm.recommendedTracks.isEmpty()) {
-                        Text("Añade más pistas para recibir recomendaciones basadas en BPM, género y tonalidad.")
-                    } else {
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            items(vm.recommendedTracks) { track ->
-                                RecommendationCard(track = track) {
-                                    vm.addTrackToCrate(track, crate) {
-                                        snackbarScope.launch {
-                                            snackbarHost.showSnackbar("${track.title} añadido a ${crate.name}")
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    Spacer(Modifier.height(16.dp))
-
-                    Text("Sincronización con Drive", style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Button(onClick = { requestCsvExport(crate) }) { Text("Exportar CSV") }
-                        Button(onClick = { requestImport(crate) }) { Text("Importar CSV") }
-                    }
-
-                    Spacer(Modifier.height(12.dp))
-
-                    Text("Integración Rekordbox / Serato / Traktor", style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.height(8.dp))
-                    Button(onClick = { requestJsonExport(crate) }) { Text("Exportar JSON compatible") }
-                }
-            }
-        }
-
-        item {
-            SectionCard(
-                title = "Crear setlist desde la biblioteca",
-                description = "Arma setlists sin depender de un crate específico.",
-            ) {
-                OutlinedTextField(
-                    value = globalSearchQuery,
-                    onValueChange = { globalSearchQuery = it },
-                    label = { Text("Buscar en biblioteca") },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(Modifier.height(8.dp))
-                val filteredLibraryTracks = remember(libraryTracks, globalSearchQuery) {
-                    val query = globalSearchQuery.trim().lowercase()
-                    if (query.isEmpty()) {
-                        libraryTracks
-                    } else {
-                        libraryTracks.filter { track ->
-                            track.title.lowercase().contains(query) || track.artist.lowercase().contains(query)
-                        }
-                    }
-                }
-                if (filteredLibraryTracks.isEmpty()) {
-                    Text("No hay pistas que coincidan con tu búsqueda.")
-                } else {
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        items(filteredLibraryTracks.take(12), key = { it.id }) { track ->
-                            TrackSelectChip(
-                                track = track,
-                                selected = track.id in globalSelectedTrackIds,
-                                onToggle = {
-                                    if (track.id in globalSelectedTrackIds) {
-                                        globalSelectedTrackIds.remove(track.id)
-                                    } else {
-                                        globalSelectedTrackIds.add(track.id)
-                                    }
-                                },
-                            )
-                        }
-                    }
-                }
-                Spacer(Modifier.height(12.dp))
-                SelectedTrackList(
-                    title = "Orden del setlist global",
-                    tracks = globalSelectedTrackIds.mapNotNull { trackId ->
-                        libraryTracks.firstOrNull { it.id == trackId }
-                    },
-                    onMoveUp = { index -> moveTrack(globalSelectedTrackIds, index, index - 1) },
-                    onMoveDown = { index -> moveTrack(globalSelectedTrackIds, index, index + 1) },
-                    onRemove = { trackId -> globalSelectedTrackIds.remove(trackId) },
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = globalSetlistName,
-                    onValueChange = { globalSetlistName = it },
-                    label = { Text("Nombre del setlist global") },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(Modifier.height(8.dp))
-                Button(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    onClick = {
-                        val trackLookup = libraryTracks.associateBy { it.id }
-                        val tracks = globalSelectedTrackIds.mapNotNull { trackLookup[it] }
-                        if (tracks.isEmpty()) {
-                            snackbarScope.launch { snackbarHost.showSnackbar("Selecciona pistas para el setlist global") }
-                            return@Button
-                        }
-                        vm.createSetlist(globalSetlistName.trim(), tracks) {
-                            snackbarScope.launch {
-                                snackbarHost.showSnackbar(
-                                    "Setlist \"$globalSetlistName\" guardado (${tracks.size} pistas)",
-                                )
-                                globalSelectedTrackIds.clear()
-                            }
-                        }
-                    },
-                ) {
-                    Text("Crear setlist global")
-                }
-            }
-        }
-
-        item {
-            SectionCard(
-                title = "Setlists guardados",
-                description = "Consulta, exporta y detalla tus playlists.",
-            ) {
-                setlists.forEach { summary ->
-                    ElevatedCard(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 6.dp),
-                        onClick = {
-                            expandedSetlistId = if (expandedSetlistId == summary.setlist.id) null else summary.setlist.id
-                            vm.loadSetlistTracks(summary.setlist.id)
-                        },
-                    ) {
-                        Column(Modifier.padding(16.dp)) {
-                            Text(summary.setlist.name, style = MaterialTheme.typography.titleMedium)
-                            Text("${summary.trackCount} pistas", style = MaterialTheme.typography.bodySmall)
-                            Spacer(Modifier.height(8.dp))
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                SetlistExportFormat.values().forEach { format ->
-                                    AssistChip(
-                                        onClick = {
-                                            registerOnSetlistExported { uri ->
-                                                vm.exportSetlist(summary.setlist.id, format, uri) { count ->
-                                                    snackbarScope.launch {
-                                                        snackbarHost.showSnackbar(
-                                                            "Exportadas $count pistas del setlist a CSV ${format.displayName}",
-                                                        )
-                                                    }
-                                                }
-                                            }
-
-                                            launchSetlistExporter("${summary.setlist.name}_${format.fileSuffix}.csv")
-                                        },
-                                        label = { Text("Exportar ${format.displayName}") },
-                                    )
-                                }
-                                AssistChip(onClick = { expandedSetlistId = null }, label = { Text("Cerrar detalle") })
-                            }
-
-                            if (expandedSetlistId == summary.setlist.id) {
-                                val tracks = setlistDetails[summary.setlist.id].orEmpty()
-                                Spacer(Modifier.height(8.dp))
-                                tracks.forEach { trackView ->
-                                    trackView.track?.let { track ->
-                                        Column(
+                            TechnoStyle.values().forEach { style ->
+                                val styleColor = Color(style.colorHex)
+                                FilterChip(
+                                    selected = newCrateCategory == style,
+                                    onClick = {
+                                        newCrateCategory = if (newCrateCategory == style) null else style
+                                    },
+                                    label = { Text(style.displayName) },
+                                    leadingIcon = {
+                                        Box(
                                             Modifier
+                                                .size(12.dp)
+                                                .clip(CircleShape)
+                                                .background(styleColor),
+                                        )
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            HomePage.ViewCrates -> {
+                item {
+                    SectionCard(
+                        title = "Tus crates",
+                        description = "Filtra por color y accede rápido a cada crate.",
+                    ) {
+                        val crateColorCategories = remember(crateSummaries) {
+                            crateSummaries.map { colorCategoryFor(it.crate) }.distinctBy { it.id ?: it.name }
+                        }
+                        if (crateColorCategories.isNotEmpty()) {
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                item {
+                                    FilterChip(
+                                        selected = colorFilter == null,
+                                        onClick = { colorFilter = null },
+                                        label = { Text("Todos") },
+                                    )
+                                }
+
+                                items(crateColorCategories) { category ->
+                                    FilterChip(
+                                        selected = colorFilter?.let { it.id == category.id } ?: false,
+                                        onClick = { colorFilter = category },
+                                        label = { Text(category.name) },
+                                        leadingIcon = {
+                                            Box(
+                                                Modifier
+                                                    .size(12.dp)
+                                                    .clip(CircleShape)
+                                                    .background(category.color),
+                                            )
+                                        },
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.height(12.dp))
+                        }
+
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            items(crateSummaries.filter { colorFilter?.matches(it.crate) ?: true }) { summary ->
+                                val crate = summary.crate
+                                val isSelectedCrate = selectedCrate?.id == crate.id
+                                val crateCategory = colorCategoryFor(crate)
+                                val cardModifier = Modifier
+                                    .width(240.dp)
+                                    .heightIn(min = 160.dp)
+                                    .then(
+                                        if (isSelectedCrate) {
+                                            Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
+                                        } else {
+                                            Modifier
+                                        },
+                                    )
+                                ElevatedCard(
+                                    modifier = cardModifier,
+                                    onClick = { vm.selectCrate(crate) },
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = CardDefaults.elevatedCardColors(),
+                                ) {
+                                    Column(
+                                        Modifier
+                                            .fillMaxSize()
+                                            .padding(16.dp),
+                                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .height(60.dp)
                                                 .fillMaxWidth()
-                                                .padding(vertical = 6.dp),
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .background(colorForCrate(crate)),
+                                            contentAlignment = Alignment.Center,
                                         ) {
                                             Text(
-                                                "${trackView.position + 1}. ${track.artist} - ${track.title}",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                maxLines = 2,
-                                                overflow = TextOverflow.Ellipsis,
+                                                crate.name.take(1).uppercase(),
+                                                color = Color.White,
+                                                style = MaterialTheme.typography.headlineMedium,
                                             )
-                                            val tagsForTrack = trackTags[track.id].orEmpty()
-                                            TagPillRow(
-                                                tags = tagsForTrack,
-                                                onRemoveTag = { tag ->
-                                                    snackbarScope.launch {
-                                                        if (vm.removeTagFromTrack(track.id, tag)) {
-                                                            snackbarHost.showSnackbar("Etiqueta \"${tag.name}\" eliminada de ${track.title}")
+                                        }
+                                        Text(crate.name, style = MaterialTheme.typography.titleMedium)
+                                        Text(
+                                            crateCategory.name,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = crateCategory.color,
+                                        )
+                                        Text("${summary.trackCount} pistas", style = MaterialTheme.typography.bodySmall)
+                                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            CrateActionChip(
+                                                label = "Ver crate",
+                                                icon = Icons.Filled.LibraryMusic,
+                                                onClick = {
+                                                    vm.selectCrate(crate)
+                                                    onOpenCrate(crate.id)
+                                                },
+                                            )
+                                            CrateActionChip(
+                                                label = "Importar CSV",
+                                                icon = Icons.Filled.CloudUpload,
+                                                onClick = { requestImport(crate) },
+                                            )
+                                            CrateActionChip(
+                                                label = "Exportar CSV",
+                                                icon = Icons.Filled.CloudDownload,
+                                                onClick = { requestCsvExport(crate) },
+                                            )
+                                            CrateActionChip(
+                                                label = "Exportar crate",
+                                                icon = Icons.Filled.InsertDriveFile,
+                                                onClick = { requestJsonExport(crate) },
+                                            )
+                                            CrateActionChip(
+                                                label = "Editar crate",
+                                                icon = Icons.Filled.Edit,
+                                                onClick = {
+                                                    crateToEdit = crate
+                                                    editCrateName = crate.name
+                                                    editCrateCategory = TechnoStyle.fromId(crate.colorCategory)
+                                                        ?: TechnoStyle.TECHNO_HOUSE
+                                                },
+                                            )
+                                            CrateActionChip(
+                                                label = "Borrar crate",
+                                                icon = Icons.Filled.Delete,
+                                                onClick = { crateToDelete = crate },
+                                            )
+                                            CrateActionChip(
+                                                label = "Compartir crate",
+                                                icon = Icons.Filled.Share,
+                                                onClick = { shareCrate(crate) },
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                selectedCrate?.let { crate ->
+                    item {
+                        SectionCard(
+                            title = "Tracks en ${crate.name}",
+                            description = "Filtra, etiqueta y prepara setlists sin perderte.",
+                        ) {
+                            if (loading) {
+                                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                                Spacer(Modifier.height(8.dp))
+                            }
+
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                OutlinedTextField(
+                                    value = vm.searchQuery,
+                                    onValueChange = { vm.searchQuery = it },
+                                    label = { Text("Buscar") },
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Button(onClick = { vm.clearFilters() }) { Text("Limpiar filtros") }
+                            }
+                            Spacer(Modifier.height(8.dp))
+
+                            vm.bpmBounds?.let { bounds ->
+                                Spacer(Modifier.height(8.dp))
+                                Text("Rango BPM", style = MaterialTheme.typography.labelMedium)
+                                RangeSlider(
+                                    value = vm.bpmRange ?: bounds,
+                                    onValueChange = { vm.bpmRange = it },
+                                    valueRange = bounds,
+                                )
+                            }
+
+                            Spacer(Modifier.height(12.dp))
+
+                            LazyVerticalGrid(
+                                columns = GridCells.Adaptive(280.dp),
+                                modifier = Modifier.heightIn(min = 120.dp).fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                items(filteredTracks, key = { it.id }) { track ->
+                                    val tags = trackTags[track.id].orEmpty()
+
+                                    TrackCard(
+                                        track = track,
+                                        tags = tags,
+                                        selected = track.id in selectedTrackIds,
+                                        onSelectedChange = { isSelected ->
+                                            if (isSelected) {
+                                                if (track.id !in selectedTrackIds) {
+                                                    selectedTrackIds.add(track.id)
+                                                }
+                                            } else {
+                                                selectedTrackIds.remove(track.id)
+                                            }
+                                        },
+                                        onRemoveTag = { tag ->
+                                            snackbarScope.launch {
+                                                if (vm.removeTagFromTrack(track.id, tag)) {
+                                                    snackbarHost.showSnackbar("Etiqueta \"${tag.name}\" eliminada de ${track.title}")
+                                                }
+                                            }
+                                        },
+                                        onEditTags = { tagEditorTarget = track },
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.height(16.dp))
+
+                            Text("Recomendaciones inteligentes", style = MaterialTheme.typography.titleMedium)
+                            Spacer(Modifier.height(8.dp))
+                            if (vm.recommendedTracks.isEmpty()) {
+                                Text("Añade más pistas para recibir recomendaciones basadas en BPM, género y tonalidad.")
+                            } else {
+                                LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    items(vm.recommendedTracks) { track ->
+                                        RecommendationCard(track = track) {
+                                            vm.addTrackToCrate(track, crate) {
+                                                snackbarScope.launch {
+                                                    snackbarHost.showSnackbar("${track.title} añadido a ${crate.name}")
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            Spacer(Modifier.height(16.dp))
+
+                            Text("Sincronización con Drive", style = MaterialTheme.typography.titleMedium)
+                            Spacer(Modifier.height(8.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Button(onClick = { requestCsvExport(crate) }) { Text("Exportar CSV") }
+                                Button(onClick = { requestImport(crate) }) { Text("Importar CSV") }
+                            }
+
+                            Spacer(Modifier.height(12.dp))
+
+                            Text("Integración Rekordbox / Serato / Traktor", style = MaterialTheme.typography.titleMedium)
+                            Spacer(Modifier.height(8.dp))
+                            Button(onClick = { requestJsonExport(crate) }) { Text("Exportar JSON compatible") }
+                        }
+                    }
+                }
+            }
+            HomePage.CreateSetlist -> {
+                if (selectedCrate == null) {
+                    item {
+                        SectionCard(
+                            title = "Selecciona un crate primero",
+                            description = "Para crear setlists con filtros necesitas escoger un crate activo.",
+                        ) {
+                            Button(onClick = { currentPage = HomePage.ViewCrates }) {
+                                Text("Ir a mis crates")
+                            }
+                        }
+                    }
+                } else {
+                    item {
+                        SectionCard(
+                            title = "Tracks en ${selectedCrate.name}",
+                            description = "Filtra, etiqueta y prepara setlists sin perderte.",
+                        ) {
+                            if (loading) {
+                                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                                Spacer(Modifier.height(8.dp))
+                            }
+
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                OutlinedTextField(
+                                    value = vm.searchQuery,
+                                    onValueChange = { vm.searchQuery = it },
+                                    label = { Text("Buscar") },
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Button(onClick = { vm.clearFilters() }) { Text("Limpiar filtros") }
+                            }
+                            Spacer(Modifier.height(8.dp))
+
+                            vm.bpmBounds?.let { bounds ->
+                                Spacer(Modifier.height(8.dp))
+                                Text("Rango BPM", style = MaterialTheme.typography.labelMedium)
+                                RangeSlider(
+                                    value = vm.bpmRange ?: bounds,
+                                    onValueChange = { vm.bpmRange = it },
+                                    valueRange = bounds,
+                                )
+                            }
+
+                            Spacer(Modifier.height(12.dp))
+
+                            LazyVerticalGrid(
+                                columns = GridCells.Adaptive(280.dp),
+                                modifier = Modifier.heightIn(min = 120.dp).fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                items(filteredTracks, key = { it.id }) { track ->
+                                    val tags = trackTags[track.id].orEmpty()
+
+                                    TrackCard(
+                                        track = track,
+                                        tags = tags,
+                                        selected = track.id in selectedTrackIds,
+                                        onSelectedChange = { isSelected ->
+                                            if (isSelected) {
+                                                if (track.id !in selectedTrackIds) {
+                                                    selectedTrackIds.add(track.id)
+                                                }
+                                            } else {
+                                                selectedTrackIds.remove(track.id)
+                                            }
+                                        },
+                                        onRemoveTag = { tag ->
+                                            snackbarScope.launch {
+                                                if (vm.removeTagFromTrack(track.id, tag)) {
+                                                    snackbarHost.showSnackbar("Etiqueta \"${tag.name}\" eliminada de ${track.title}")
+                                                }
+                                            }
+                                        },
+                                        onEditTags = { tagEditorTarget = track },
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.height(16.dp))
+
+                            Text("Modo setlist", style = MaterialTheme.typography.titleMedium)
+                            Spacer(Modifier.height(8.dp))
+                            SelectedTrackList(
+                                title = "Orden del setlist",
+                                tracks = selectedTrackIds.mapNotNull { trackId ->
+                                    filteredTracks.find { it.id == trackId }
+                                },
+                                onMoveUp = { index -> moveTrack(selectedTrackIds, index, index - 1) },
+                                onMoveDown = { index -> moveTrack(selectedTrackIds, index, index + 1) },
+                                onRemove = { trackId -> selectedTrackIds.remove(trackId) },
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = setlistName,
+                                onValueChange = { setlistName = it },
+                                label = { Text("Nombre del setlist") },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Button(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp),
+                                onClick = {
+                                    val trackLookup = filteredTracks.associateBy { it.id }
+                                    val tracks = selectedTrackIds.mapNotNull { trackLookup[it] }
+                                    if (tracks.isEmpty()) {
+                                        snackbarScope.launch {
+                                            snackbarHost.showSnackbar("Selecciona pistas para el setlist")
+                                        }
+                                        return@Button
+                                    }
+                                    vm.createSetlist(setlistName.trim(), tracks) {
+                                        snackbarScope.launch {
+                                            snackbarHost.showSnackbar(
+                                                "Setlist \"$setlistName\" guardado (${tracks.size} pistas)",
+                                            )
+                                            selectedTrackIds.clear()
+                                        }
+                                    }
+                                },
+                            ) {
+                                Text("Crear setlist")
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    SectionCard(
+                        title = "Crear setlist desde la biblioteca",
+                        description = "Arma setlists sin depender de un crate específico.",
+                    ) {
+                        OutlinedTextField(
+                            value = globalSearchQuery,
+                            onValueChange = { globalSearchQuery = it },
+                            label = { Text("Buscar en biblioteca") },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        val filteredLibraryTracks = remember(libraryTracks, globalSearchQuery) {
+                            val query = globalSearchQuery.trim().lowercase()
+                            if (query.isEmpty()) {
+                                libraryTracks
+                            } else {
+                                libraryTracks.filter { track ->
+                                    track.title.lowercase().contains(query) || track.artist.lowercase().contains(query)
+                                }
+                            }
+                        }
+                        if (filteredLibraryTracks.isEmpty()) {
+                            Text("No hay pistas que coincidan con tu búsqueda.")
+                        } else {
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                items(filteredLibraryTracks.take(12), key = { it.id }) { track ->
+                                    TrackSelectChip(
+                                        track = track,
+                                        selected = track.id in globalSelectedTrackIds,
+                                        onToggle = {
+                                            if (track.id in globalSelectedTrackIds) {
+                                                globalSelectedTrackIds.remove(track.id)
+                                            } else {
+                                                globalSelectedTrackIds.add(track.id)
+                                            }
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        SelectedTrackList(
+                            title = "Orden del setlist global",
+                            tracks = globalSelectedTrackIds.mapNotNull { trackId ->
+                                libraryTracks.firstOrNull { it.id == trackId }
+                            },
+                            onMoveUp = { index -> moveTrack(globalSelectedTrackIds, index, index - 1) },
+                            onMoveDown = { index -> moveTrack(globalSelectedTrackIds, index, index + 1) },
+                            onRemove = { trackId -> globalSelectedTrackIds.remove(trackId) },
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = globalSetlistName,
+                            onValueChange = { globalSetlistName = it },
+                            label = { Text("Nombre del setlist global") },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Button(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            onClick = {
+                                val trackLookup = libraryTracks.associateBy { it.id }
+                                val tracks = globalSelectedTrackIds.mapNotNull { trackLookup[it] }
+                                if (tracks.isEmpty()) {
+                                    snackbarScope.launch { snackbarHost.showSnackbar("Selecciona pistas para el setlist global") }
+                                    return@Button
+                                }
+                                vm.createSetlist(globalSetlistName.trim(), tracks) {
+                                    snackbarScope.launch {
+                                        snackbarHost.showSnackbar(
+                                            "Setlist \"$globalSetlistName\" guardado (${tracks.size} pistas)",
+                                        )
+                                        globalSelectedTrackIds.clear()
+                                    }
+                                }
+                            },
+                        ) {
+                            Text("Crear setlist global")
+                        }
+                    }
+                }
+            }
+            HomePage.ViewSetlists -> {
+                item {
+                    SectionCard(
+                        title = "Setlists guardados",
+                        description = "Consulta, exporta y detalla tus playlists.",
+                    ) {
+                        setlists.forEach { summary ->
+                            ElevatedCard(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 6.dp),
+                                onClick = {
+                                    expandedSetlistId = if (expandedSetlistId == summary.setlist.id) null else summary.setlist.id
+                                    vm.loadSetlistTracks(summary.setlist.id)
+                                },
+                            ) {
+                                Column(Modifier.padding(16.dp)) {
+                                    Text(summary.setlist.name, style = MaterialTheme.typography.titleMedium)
+                                    Text("${summary.trackCount} pistas", style = MaterialTheme.typography.bodySmall)
+                                    Spacer(Modifier.height(8.dp))
+                                    FlowRow(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        SetlistExportFormat.values().forEach { format ->
+                                            AssistChip(
+                                                onClick = {
+                                                    registerOnSetlistExported { uri ->
+                                                        vm.exportSetlist(summary.setlist.id, format, uri) { count ->
+                                                            snackbarScope.launch {
+                                                                snackbarHost.showSnackbar(
+                                                                    "Exportadas $count pistas del setlist a CSV ${format.displayName}",
+                                                                )
+                                                            }
                                                         }
                                                     }
-                                                },
-                                                onEditTags = { tagEditorTarget = track },
 
-                                                )
+                                                    launchSetlistExporter("${summary.setlist.name}_${format.fileSuffix}.csv")
+                                                },
+                                                label = { Text("Exportar ${format.displayName}") },
+                                            )
+                                        }
+                                        AssistChip(onClick = { expandedSetlistId = null }, label = { Text("Cerrar detalle") })
+                                    }
+
+                                    if (expandedSetlistId == summary.setlist.id) {
+                                        val tracks = setlistDetails[summary.setlist.id].orEmpty()
+                                        Spacer(Modifier.height(8.dp))
+                                        tracks.forEach { trackView ->
+                                            trackView.track?.let { track ->
+                                                Column(
+                                                    Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(vertical = 6.dp),
+                                                ) {
+                                                    Text(
+                                                        "${trackView.position + 1}. ${track.artist} - ${track.title}",
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        maxLines = 2,
+                                                        overflow = TextOverflow.Ellipsis,
+                                                    )
+                                                    val tagsForTrack = trackTags[track.id].orEmpty()
+                                                    TagPillRow(
+                                                        tags = tagsForTrack,
+                                                        onRemoveTag = { tag ->
+                                                            snackbarScope.launch {
+                                                                if (vm.removeTagFromTrack(track.id, tag)) {
+                                                                    snackbarHost.showSnackbar(
+                                                                        "Etiqueta \"${tag.name}\" eliminada de ${track.title}",
+                                                                    )
+                                                                }
+                                                            }
+                                                        },
+                                                        onEditTags = { tagEditorTarget = track },
+                                                    )
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -1222,6 +1350,111 @@ fun HomeScreen(
 
     if (loading) {
         Spacer(Modifier.height(16.dp))
+    }
+}
+
+@Composable
+private fun PageHeader(
+    title: String,
+    onBack: () -> Unit,
+) {
+    ElevatedCard(shape = RoundedCornerShape(18.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.Filled.ArrowBack, contentDescription = "Volver")
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(
+                    "Elige acciones rápidas desde el menú principal.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeNavigationMenu(
+    onNavigate: (HomePage) -> Unit,
+) {
+    SectionCard(
+        title = "¿Qué quieres hacer hoy?",
+        description = "Navega por bloques para ir directo a las funciones principales.",
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            HomeNavigationCard(
+                title = "Crear un nuevo crate",
+                description = "Añade un nuevo crate y define su estilo.",
+                icon = Icons.Filled.Add,
+                onClick = { onNavigate(HomePage.CreateCrate) },
+            )
+            HomeNavigationCard(
+                title = "Ver mis crates",
+                description = "Gestiona tus crates existentes y sus pistas.",
+                icon = Icons.Filled.LibraryMusic,
+                onClick = { onNavigate(HomePage.ViewCrates) },
+            )
+            HomeNavigationCard(
+                title = "Crear setlist",
+                description = "Construye un setlist desde crates o biblioteca.",
+                icon = Icons.Filled.Edit,
+                onClick = { onNavigate(HomePage.CreateSetlist) },
+            )
+            HomeNavigationCard(
+                title = "Ver mis setlists",
+                description = "Revisa y exporta setlists guardados.",
+                icon = Icons.Filled.InsertDriveFile,
+                onClick = { onNavigate(HomePage.ViewSetlists) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun HomeNavigationCard(
+    title: String,
+    description: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+) {
+    ElevatedCard(onClick = onClick) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(title, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
 
@@ -1534,16 +1767,16 @@ private fun HomeHeroSection(
                 }
 
                 /**Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Button(onClick = { onExport?.invoke() }, enabled = onExport != null) {
-                        Icon(Icons.Filled.CloudDownload, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Exportar rápido")
-                    }
-                    Button(onClick = { onImport?.invoke() }, enabled = onImport != null) {
-                        Icon(Icons.Filled.CloudUpload, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Importar pistas")
-                    }
+                Button(onClick = { onExport?.invoke() }, enabled = onExport != null) {
+                Icon(Icons.Filled.CloudDownload, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Exportar rápido")
+                }
+                Button(onClick = { onImport?.invoke() }, enabled = onImport != null) {
+                Icon(Icons.Filled.CloudUpload, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Importar pistas")
+                }
                 }**/
             }
         }
